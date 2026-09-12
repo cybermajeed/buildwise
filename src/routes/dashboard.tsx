@@ -28,7 +28,7 @@ function DashboardPage() {
     <Page>
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Professional Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Project Workspace</h1>
           <p className="mt-2 text-base text-muted-foreground">
             Manage your projects, upload plans, and generate detailed BOQs.
           </p>

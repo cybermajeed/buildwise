@@ -30,6 +30,7 @@ const plans = [
       "Estimate history tracking",
     ],
     buttonText: "Upgrade to Pro",
+    paymentLink: "upi://pay?pa=abdul.zxmajeed@okicici&pn=Majeed&am=999&cu=INR",
     highlighted: true,
   },
   {
@@ -45,7 +46,8 @@ const plans = [
       "Project management features",
       "Dedicated support",
     ],
-    buttonText: "Contact Sales",
+    buttonText: "Upgrade to Business",
+    paymentLink: "upi://pay?pa=abdul.zxmajeed@okicici&pn=Majeed&am=2499&cu=INR",
     highlighted: false,
   },
 ];
@@ -87,17 +89,24 @@ function SubscriptionPage() {
               </span>
             </div>
 
-            <button
-              className={`mt-8 w-full rounded-md px-4 py-3 text-sm font-semibold transition-colors ${
-                plan.highlighted
-                  ? "bg-background text-primary hover:bg-secondary"
-                  : plan.name === "Free"
-                    ? "border-2 border-border bg-background text-muted-foreground cursor-default"
+            {plan.paymentLink ? (
+              <a
+                href={plan.paymentLink}
+                className={`mt-8 block w-full rounded-md px-4 py-3 text-sm font-semibold transition-colors text-center ${
+                  plan.highlighted
+                    ? "bg-background text-primary hover:bg-secondary"
                     : "bg-primary text-primary-foreground hover:bg-primary/90"
-              }`}
-            >
-              {plan.buttonText}
-            </button>
+                }`}
+              >
+                {plan.buttonText}
+              </a>
+            ) : (
+              <button
+                className={`mt-8 w-full rounded-md px-4 py-3 text-sm font-semibold transition-colors border-2 border-border bg-background text-muted-foreground cursor-default`}
+              >
+                {plan.buttonText}
+              </button>
+            )}
 
             <ul className="mt-8 space-y-4 flex-1">
               {plan.features.map((feature) => (

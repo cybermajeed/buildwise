@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Download, Save, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Page } from "@/components/site-chrome";
@@ -19,6 +19,15 @@ function BoqPage() {
       <Page>
         <div className="text-center py-20">
           <h2 className="text-2xl font-bold">No Active Project</h2>
+          <p className="mt-2 text-muted-foreground">
+            Go to the dashboard to select or create a project.
+          </p>
+          <Link
+            to="/dashboard"
+            className="mt-6 inline-flex rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            Go to Dashboard
+          </Link>
         </div>
       </Page>
     );
@@ -127,6 +136,7 @@ function BoqPage() {
           onClick={() => {
             saveVersion();
             toast.success("BOQ saved successfully.");
+            navigate({ to: "/cost-estimate" });
           }}
           className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
         >

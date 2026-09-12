@@ -14,13 +14,15 @@ import {
   FileText,
   Crown,
   Settings,
+  Sun,
+  Moon,
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 
 const navLinks = [
   { to: "/", label: "Home", icon: Home },
   { to: "/calculators", label: "Calculator", icon: Calculator },
-  { to: "/dashboard", label: "Projects", icon: LayoutDashboard },
+  { to: "/dashboard", label: "Project Workspace", icon: LayoutDashboard },
   { to: "/plan-upload", label: "Plan Upload", icon: UploadCloud },
   { to: "/takeoff", label: "Takeoff", icon: Ruler },
   { to: "/boq", label: "BOQ", icon: ListOrdered },
@@ -31,16 +33,50 @@ const navLinks = [
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
+function ThemeToggle() {
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    const isDark =
+      document.documentElement.classList.contains("dark") ||
+      localStorage.getItem("theme") === "dark";
+    setIsDark(isDark);
+    if (isDark) document.documentElement.classList.add("dark");
+  }, []);
+
+  const toggle = () => {
+    setIsDark(!isDark);
+    if (!isDark) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  };
+
+  return (
+    <button
+      onClick={toggle}
+      className="grid h-9 w-9 place-items-center rounded-md border border-border text-foreground transition-colors hover:bg-secondary"
+      title="Toggle theme"
+    >
+      {isDark ? <Sun size={18} /> : <Moon size={18} />}
+    </button>
+  );
+}
+
 export function SiteSidebar() {
   return (
     <aside className="hidden w-64 flex-col border-r border-border bg-card sm:flex sticky top-0 h-screen">
-      <div className="flex h-16 items-center px-6 border-b border-border/50">
+      <div className="flex h-16 items-center justify-between px-6 border-b border-border/50">
         <Link to="/" className="flex items-center gap-2.5">
           <span className="grid h-8 w-8 place-items-center rounded-md bg-primary text-primary-foreground">
             <HardHat size={18} />
           </span>
           <span className="text-lg font-bold tracking-tight">BuildWise</span>
         </Link>
+        <ThemeToggle />
       </div>
       <div className="flex-1 overflow-y-auto py-4 px-3">
         <nav className="space-y-1">
@@ -80,13 +116,16 @@ export function MobileNav() {
         <span className="text-lg font-bold tracking-tight">BuildWise</span>
       </Link>
 
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="grid h-9 w-9 place-items-center rounded-md border border-border text-foreground"
-      >
-        {open ? <X size={18} /> : <Menu size={18} />}
-      </button>
+      <div className="flex items-center gap-3">
+        <ThemeToggle />
+        <button
+          type="button"
+          onClick={() => setOpen((prev) => !prev)}
+          className="grid h-9 w-9 place-items-center rounded-md border border-border text-foreground"
+        >
+          {open ? <X size={18} /> : <Menu size={18} />}
+        </button>
+      </div>
 
       {open && (
         <div className="absolute inset-x-0 top-16 border-b border-border bg-background px-4 py-4 shadow-lg">

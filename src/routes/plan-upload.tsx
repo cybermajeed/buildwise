@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { UploadCloud, File, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 import { Page } from "@/components/site-chrome";
@@ -16,10 +16,18 @@ function PlanUploadPage() {
 
   if (!project) {
     return (
-      <Page>
+            <Page>
         <div className="text-center py-20">
           <h2 className="text-2xl font-bold">No Active Project</h2>
-          <p className="mt-2 text-muted-foreground">Please select a project from the dashboard.</p>
+          <p className="mt-2 text-muted-foreground">
+            Go to the dashboard to select or create a project.
+          </p>
+          <Link
+            to="/dashboard"
+            className="mt-6 inline-flex rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            Go to Dashboard
+          </Link>
         </div>
       </Page>
     );

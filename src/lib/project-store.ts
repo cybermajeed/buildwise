@@ -32,6 +32,12 @@ export type AppState = {
   mode: "simple" | "professional";
 };
 
+const generateId = () => {
+  return typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : Math.random().toString(36).substring(2, 15);
+};
+
 const KEY = "buildwise.appstate";
 const empty: AppState = { projects: [], activeProjectId: null, mode: "simple" };
 
@@ -90,7 +96,7 @@ export function setAppMode(mode: "simple" | "professional") {
 export function createProject(name: string) {
   const state = read();
   const newProject: ProjectState = {
-    id: crypto.randomUUID(),
+    id: generateId(),
     name,
     items: [],
     savedAt: new Date().toISOString(),
@@ -149,7 +155,7 @@ export function saveVersion() {
   const projects = state.projects.map((p) => {
     if (p.id !== state.activeProjectId) return p;
     const version: EstimateVersion = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       createdAt: new Date().toISOString(),
       items: [...p.items],
       totalCost: totalCost(p.items),
@@ -174,7 +180,7 @@ export function duplicateProject(id: string) {
 
   const newProject: ProjectState = {
     ...projectToDuplicate,
-    id: crypto.randomUUID(),
+    id: generateId(),
     name: `${projectToDuplicate.name} (Copy)`,
     savedAt: new Date().toISOString(),
     versions: [],
