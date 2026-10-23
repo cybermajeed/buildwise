@@ -16,11 +16,13 @@ import { Route as CostEstimateRouteImport } from './routes/cost-estimate'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as MaterialPricesRouteImport } from './routes/material-prices'
 import { Route as PlanUploadRouteImport } from './routes/plan-upload'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ProjectRouteImport } from './routes/project'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SubscriptionRouteImport } from './routes/subscription'
 import { Route as TakeoffRouteImport } from './routes/takeoff'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as CalculatorsIndexRouteImport } from './routes/calculators.index'
 import { Route as CalculatorsBrickRouteImport } from './routes/calculators.brick'
 import { Route as CalculatorsCementRouteImport } from './routes/calculators.cement'
@@ -64,6 +66,11 @@ const PlanUploadRoute = PlanUploadRouteImport.update({
   path: '/plan-upload',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProjectRoute = ProjectRouteImport.update({
   id: '/project',
   path: '/project',
@@ -87,6 +94,11 @@ const SubscriptionRoute = SubscriptionRouteImport.update({
 const TakeoffRoute = TakeoffRouteImport.update({
   id: '/takeoff',
   path: '/takeoff',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CalculatorsIndexRoute = CalculatorsIndexRouteImport.update({
@@ -133,11 +145,13 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/material-prices': typeof MaterialPricesRoute
   '/plan-upload': typeof PlanUploadRoute
+  '/privacy': typeof PrivacyRoute
   '/project': typeof ProjectRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/subscription': typeof SubscriptionRoute
   '/takeoff': typeof TakeoffRoute
+  '/terms': typeof TermsRoute
   '/calculators/brick': typeof CalculatorsBrickRoute
   '/calculators/cement': typeof CalculatorsCementRoute
   '/calculators/concrete': typeof CalculatorsConcreteRoute
@@ -154,11 +168,13 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/material-prices': typeof MaterialPricesRoute
   '/plan-upload': typeof PlanUploadRoute
+  '/privacy': typeof PrivacyRoute
   '/project': typeof ProjectRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/subscription': typeof SubscriptionRoute
   '/takeoff': typeof TakeoffRoute
+  '/terms': typeof TermsRoute
   '/calculators/brick': typeof CalculatorsBrickRoute
   '/calculators/cement': typeof CalculatorsCementRoute
   '/calculators/concrete': typeof CalculatorsConcreteRoute
@@ -176,11 +192,13 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/material-prices': typeof MaterialPricesRoute
   '/plan-upload': typeof PlanUploadRoute
+  '/privacy': typeof PrivacyRoute
   '/project': typeof ProjectRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/subscription': typeof SubscriptionRoute
   '/takeoff': typeof TakeoffRoute
+  '/terms': typeof TermsRoute
   '/calculators/brick': typeof CalculatorsBrickRoute
   '/calculators/cement': typeof CalculatorsCementRoute
   '/calculators/concrete': typeof CalculatorsConcreteRoute
@@ -199,11 +217,13 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/material-prices'
     | '/plan-upload'
+    | '/privacy'
     | '/project'
     | '/reports'
     | '/settings'
     | '/subscription'
     | '/takeoff'
+    | '/terms'
     | '/calculators/brick'
     | '/calculators/cement'
     | '/calculators/concrete'
@@ -220,11 +240,13 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/material-prices'
     | '/plan-upload'
+    | '/privacy'
     | '/project'
     | '/reports'
     | '/settings'
     | '/subscription'
     | '/takeoff'
+    | '/terms'
     | '/calculators/brick'
     | '/calculators/cement'
     | '/calculators/concrete'
@@ -241,11 +263,13 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/material-prices'
     | '/plan-upload'
+    | '/privacy'
     | '/project'
     | '/reports'
     | '/settings'
     | '/subscription'
     | '/takeoff'
+    | '/terms'
     | '/calculators/brick'
     | '/calculators/cement'
     | '/calculators/concrete'
@@ -263,11 +287,13 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   MaterialPricesRoute: typeof MaterialPricesRoute
   PlanUploadRoute: typeof PlanUploadRoute
+  PrivacyRoute: typeof PrivacyRoute
   ProjectRoute: typeof ProjectRoute
   ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRoute
   SubscriptionRoute: typeof SubscriptionRoute
   TakeoffRoute: typeof TakeoffRoute
+  TermsRoute: typeof TermsRoute
   CalculatorsBrickRoute: typeof CalculatorsBrickRoute
   CalculatorsCementRoute: typeof CalculatorsCementRoute
   CalculatorsConcreteRoute: typeof CalculatorsConcreteRoute
@@ -328,6 +354,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlanUploadRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/project': {
       id: '/project'
       path: '/project'
@@ -361,6 +394,13 @@ declare module '@tanstack/react-router' {
       path: '/takeoff'
       fullPath: '/takeoff'
       preLoaderRoute: typeof TakeoffRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/calculators/': {
@@ -423,11 +463,13 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   MaterialPricesRoute: MaterialPricesRoute,
   PlanUploadRoute: PlanUploadRoute,
+  PrivacyRoute: PrivacyRoute,
   ProjectRoute: ProjectRoute,
   ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRoute,
   SubscriptionRoute: SubscriptionRoute,
   TakeoffRoute: TakeoffRoute,
+  TermsRoute: TermsRoute,
   CalculatorsBrickRoute: CalculatorsBrickRoute,
   CalculatorsCementRoute: CalculatorsCementRoute,
   CalculatorsConcreteRoute: CalculatorsConcreteRoute,

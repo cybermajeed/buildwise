@@ -7,8 +7,6 @@ import {
   Calculator,
   LayoutDashboard,
   UploadCloud,
-  Ruler,
-  ListOrdered,
   IndianRupee,
   PieChart,
   FileText,
@@ -23,9 +21,7 @@ const navLinks = [
   { to: "/", label: "Home", icon: Home },
   { to: "/calculators", label: "Calculator", icon: Calculator },
   { to: "/dashboard", label: "Project Workspace", icon: LayoutDashboard },
-  { to: "/plan-upload", label: "Plan Upload", icon: UploadCloud },
-  { to: "/takeoff", label: "Takeoff", icon: Ruler },
-  { to: "/boq", label: "BOQ", icon: ListOrdered },
+  { to: "/plan-upload", label: "Plan & Takeoff", icon: UploadCloud },
   { to: "/material-prices", label: "Prices", icon: IndianRupee },
   { to: "/cost-estimate", label: "Estimate", icon: PieChart },
   { to: "/reports", label: "Reports", icon: FileText },
@@ -159,9 +155,19 @@ export function MobileNav() {
 export function SiteFooter() {
   return (
     <footer className="border-t border-border/50 bg-secondary/30 mt-auto">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6 text-sm text-muted-foreground">
-        <p>© BuildWise</p>
-        <p>Version 1.0</p>
+      <div className="mx-auto flex max-w-6xl flex-col sm:flex-row items-center justify-between gap-4 px-6 py-6 text-sm text-muted-foreground">
+        <p>© {new Date().getFullYear()} BuildWise Construction Cost Management</p>
+        <div className="flex items-center gap-6">
+          <Link to="/about" className="hover:text-foreground transition-colors">
+            About
+          </Link>
+          <Link to="/terms" className="hover:text-foreground transition-colors">
+            Terms of Service
+          </Link>
+          <Link to="/privacy" className="hover:text-foreground transition-colors">
+            Privacy Policy
+          </Link>
+        </div>
       </div>
     </footer>
   );

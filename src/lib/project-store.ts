@@ -45,7 +45,7 @@ let cache: AppState = empty;
 let cacheRaw: string | null = null;
 const listeners = new Set<() => void>();
 
-function read(): AppState {
+export function read(): AppState {
   if (typeof window === "undefined") return empty;
   const raw = window.localStorage.getItem(KEY);
   if (raw === cacheRaw) return cache;
