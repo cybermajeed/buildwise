@@ -19,49 +19,52 @@ export const Route = createFileRoute("/privacy")({
 function PrivacyPage() {
   return (
     <Page>
-      <div className="max-w-4xl mx-auto">
-        <header className="mb-10 pb-6 border-b border-border">
-          <div className="inline-flex items-center gap-2 rounded-full bg-green-500/10 px-3.5 py-1 text-xs font-semibold text-green-700 dark:text-green-400 mb-3">
-            <Lock size={14} /> Zero Remote Telemetry
+      {/* ─── Pale-Mint Header Band ─────────────────────────────────────────── */}
+      <div className="bg-[#ecffe0] dark:bg-zinc-950 border-b border-[#e5e7eb] dark:border-zinc-800 py-16 px-4 sm:px-8 -mx-4 sm:-mx-8 text-center mb-12">
+        <div className="max-w-4xl mx-auto">
+          <div className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white dark:bg-zinc-900 px-4 py-1.5 text-xs font-semibold text-black dark:text-white uppercase tracking-wider mb-4 shadow-sm font-display">
+            <Lock size={13} className="text-[#00f0a0]" /> Zero Remote Telemetry
           </div>
-          <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">Privacy Policy</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Effective Date: October 2026 • Last Updated: October 2026
+          <h1 className="text-4xl sm:text-6xl font-bold font-display tracking-tight text-black dark:text-white">
+            Privacy Policy
+          </h1>
+          <p className="mt-3 text-xs text-[#86909c] font-mono">
+            Effective Date: October 2026 • BuildWise Offline Monolith
           </p>
-        </header>
+        </div>
+      </div>
 
+      <div className="max-w-4xl mx-auto px-4 sm:px-8 pb-20">
         {/* Core Privacy Promise Callout */}
-        <div className="grid gap-4 sm:grid-cols-3 mb-10">
-          <div className="rounded-xl border border-border bg-card p-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary mb-3">
-              <HardDrive size={20} />
+        <div className="grid gap-5 sm:grid-cols-3 mb-12">
+          <div className="feature-card border-[#e5e7eb] dark:border-zinc-800 bg-white dark:bg-zinc-950 !p-6">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#ecffe0] text-black border border-[#00f0a0] mb-4">
+              <HardDrive size={18} />
             </div>
-            <h3 className="font-semibold text-sm">Local-First Storage</h3>
-            <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-              Your plans, quantities, material rates, and BOQs are saved entirely in your local
+            <h3 className="font-bold text-sm font-display text-black dark:text-white">Local-First Storage</h3>
+            <p className="mt-2 text-xs text-[#86909c] leading-relaxed font-light">
+              Your architectural plans, takeoff dimensions, and custom rates remain saved strictly in your local
               browser storage (<code>localStorage</code>).
             </p>
           </div>
 
-          <div className="rounded-xl border border-border bg-card p-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500/10 text-green-600 dark:text-green-400 mb-3">
-              <EyeOff size={20} />
+          <div className="feature-card border-[#e5e7eb] dark:border-zinc-800 bg-white dark:bg-zinc-950 !p-6">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#ecffe0] text-black border border-[#00f0a0] mb-4">
+              <EyeOff size={18} />
             </div>
-            <h3 className="font-semibold text-sm">No Third-Party Trackers</h3>
-            <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-              We do not embed Google Analytics, Meta Pixel, tracking cookies, or advertising
-              surveillance scripts.
+            <h3 className="font-bold text-sm font-display text-black dark:text-white">Zero Tracking Scripts</h3>
+            <p className="mt-2 text-xs text-[#86909c] leading-relaxed font-light">
+              We embed zero third-party advertising trackers, surveillance pixels, or cross-site fingerprinting tools.
             </p>
           </div>
 
-          <div className="rounded-xl border border-border bg-card p-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 mb-3">
-              <Shield size={20} />
+          <div className="feature-card border-[#e5e7eb] dark:border-zinc-800 bg-white dark:bg-zinc-950 !p-6">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#ecffe0] text-black border border-[#00f0a0] mb-4">
+              <Shield size={18} />
             </div>
-            <h3 className="font-semibold text-sm">Your Data, Your Control</h3>
-            <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-              You can export your workspace backup or wipe all stored data at any time via Settings
-              or browser settings.
+            <h3 className="font-bold text-sm font-display text-black dark:text-white">Full Data Control</h3>
+            <p className="mt-2 text-xs text-[#86909c] leading-relaxed font-light">
+              Export an encrypted JSON workspace backup or purge all local data anytime directly from Settings.
             </p>
           </div>
         </div>

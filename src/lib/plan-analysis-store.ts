@@ -9,6 +9,8 @@ export type Room = {
   lengthFt: number;
   widthFt: number;
   areaSqFt: number;
+  rawDimensionText?: string | undefined;
+  roomType?: string | undefined;
 };
 
 export type Wall = {
@@ -89,66 +91,10 @@ export type PlanAnalysisState = {
 };
 
 // ─── Default Architectural Extraction Baseline ───────────────────────────────
-
-export const DEFAULT_ROOMS: Room[] = [
-  { id: "r1", name: "Living Room", lengthFt: 14, widthFt: 16, areaSqFt: 224 },
-  { id: "r2", name: "Master Bedroom", lengthFt: 12, widthFt: 14, areaSqFt: 168 },
-  { id: "r3", name: "Bedroom 2", lengthFt: 11, widthFt: 12, areaSqFt: 132 },
-  { id: "r4", name: "Kitchen", lengthFt: 10, widthFt: 10, areaSqFt: 100 },
-  { id: "r5", name: "Dining Room", lengthFt: 10, widthFt: 11, areaSqFt: 110 },
-  { id: "r6", name: "Attached Bath", lengthFt: 5, widthFt: 7, areaSqFt: 35 },
-  { id: "r7", name: "Common Bath", lengthFt: 5, widthFt: 6, areaSqFt: 30 },
-  { id: "r8", name: "Passage / Foyer", lengthFt: 4, widthFt: 12, areaSqFt: 48 },
-];
-
-export const DEFAULT_WALLS: Wall[] = [
-  {
-    id: "w1",
-    description: "External North Wall (9\" Brick)",
-    lengthFt: 32,
-    heightFt: 10,
-    areaSqFt: 320,
-    wallType: "external",
-  },
-  {
-    id: "w2",
-    description: "External South Wall (9\" Brick)",
-    lengthFt: 32,
-    heightFt: 10,
-    areaSqFt: 320,
-    wallType: "external",
-  },
-  {
-    id: "w3",
-    description: "External East Wall (9\" Brick)",
-    lengthFt: 40,
-    heightFt: 10,
-    areaSqFt: 400,
-    wallType: "external",
-  },
-  {
-    id: "w4",
-    description: "External West Wall (9\" Brick)",
-    lengthFt: 40,
-    heightFt: 10,
-    areaSqFt: 400,
-    wallType: "external",
-  },
-  {
-    id: "w5",
-    description: "Internal Partition Walls (4.5\" Brick)",
-    lengthFt: 75,
-    heightFt: 10,
-    areaSqFt: 750,
-    wallType: "internal",
-  },
-];
-
-export const DEFAULT_OPENINGS: Opening[] = [
-  { id: "o1", type: "Door", widthFt: 3.25, heightFt: 7, count: 6 },
-  { id: "o2", type: "Window", widthFt: 4, heightFt: 4, count: 7 },
-  { id: "o3", type: "Window", widthFt: 2.5, heightFt: 3, count: 2 }, // ventilator
-];
+// Clean empty baseline: All fields remain blank until a plan image is uploaded or manually input
+export const DEFAULT_ROOMS: Room[] = [];
+export const DEFAULT_WALLS: Wall[] = [];
+export const DEFAULT_OPENINGS: Opening[] = [];
 
 export const DEFAULT_KEY_PARAMS: KeyParameters = {
   wallThicknessIn: 9,
@@ -167,6 +113,11 @@ export function deriveQuantities(
   openings: Opening[],
   params: KeyParameters,
 ): { quantities: QuantityItem[]; constituents: MaterialConstituent[] } {
+  // If no plan uploaded and no rooms/walls defined, return completely blank quantities
+  if (rooms.length === 0 && walls.length === 0) {
+    return { quantities: [], constituents: [] };
+  }
+
   // Conversion factors
   const SQFT_TO_SQM = 0.092903;
   const CFT_TO_CUM = 0.0283168;
@@ -198,10 +149,8 @@ export function deriveQuantities(
   const extOpeningsAreaSqFt = totalOpeningsAreaSqFt * 0.65;
   const intOpeningsAreaSqFt = totalOpeningsAreaSqFt * 0.35;
 
-  const grossExtWallAreaSqFt =
-    extWalls.reduce((s, w) => s + w.areaSqFt, 0) * params.numberOfFloors;
-  const grossIntWallAreaSqFt =
-    intWalls.reduce((s, w) => s + w.areaSqFt, 0) * params.numberOfFloors;
+  const grossExtWallAreaSqFt = extWalls.reduce((s, w) => s + w.areaSqFt, 0) * params.numberOfFloors;
+  const grossIntWallAreaSqFt = intWalls.reduce((s, w) => s + w.areaSqFt, 0) * params.numberOfFloors;
 
   const netExtWallAreaSqFt = Math.max(0, grossExtWallAreaSqFt - extOpeningsAreaSqFt);
   const netIntWallAreaSqFt = Math.max(0, grossIntWallAreaSqFt - intOpeningsAreaSqFt);
@@ -315,7 +264,7 @@ export function deriveQuantities(
     },
     {
       id: "brickwork_ext",
-      label: "External Brick Masonry (9\" Wall)",
+      label: 'External Brick Masonry (9" Wall)',
       quantity: extBrickCum,
       unit: "m³",
       icon: "🧱",
@@ -324,7 +273,7 @@ export function deriveQuantities(
     },
     {
       id: "brickwork_int",
-      label: "Internal Brick Masonry (4.5\" Partition)",
+      label: 'Internal Brick Masonry (4.5" Partition)',
       quantity: intBrickCum,
       unit: "m³",
       icon: "🧱",
@@ -462,26 +411,19 @@ function getStorageKey(projectId: string): string {
 }
 
 export function createEmptyPlanState(projectId: string, name?: string): PlanAnalysisState {
-  const { quantities, constituents } = deriveQuantities(
-    DEFAULT_ROOMS,
-    DEFAULT_WALLS,
-    DEFAULT_OPENINGS,
-    DEFAULT_KEY_PARAMS,
-  );
-
   return {
     projectId,
     step: 0,
     file: null,
     projectName: name || "Residential Plan Analysis",
     floorHeightFt: 10,
-    rooms: DEFAULT_ROOMS,
-    walls: DEFAULT_WALLS,
-    openings: DEFAULT_OPENINGS,
+    rooms: [],
+    walls: [],
+    openings: [],
     keyParams: DEFAULT_KEY_PARAMS,
-    quantities,
-    boqItems: deriveBOQItems(quantities),
-    constituents,
+    quantities: [],
+    boqItems: [],
+    constituents: [],
     elementsTab: "rooms",
     takeoffTab: "summary",
   };
@@ -525,10 +467,26 @@ export function readPlanState(projectId?: string): PlanAnalysisState {
 
   try {
     const parsed = JSON.parse(raw) as Partial<PlanAnalysisState>;
+    // If no plan file has been uploaded, purge any stale mock data so all fields remain blank
+    const hasMockRooms = parsed.rooms?.some(
+      (r) => r.name === "Living Room" && r.lengthFt === 14 && r.widthFt === 16,
+    );
+    const rooms = !parsed.file && hasMockRooms ? [] : parsed.rooms || [];
+    const walls = !parsed.file && hasMockRooms ? [] : parsed.walls || [];
+    const openings = !parsed.file && hasMockRooms ? [] : parsed.openings || [];
+    const keyParams = parsed.keyParams || DEFAULT_KEY_PARAMS;
+    const { quantities, constituents } = deriveQuantities(rooms, walls, openings, keyParams);
+
     const fullState: PlanAnalysisState = {
       ...createEmptyPlanState(resolvedId),
       ...parsed,
       projectId: resolvedId,
+      rooms,
+      walls,
+      openings,
+      quantities,
+      boqItems: deriveBOQItems(quantities),
+      constituents,
       // If cached file had previewDataUrl in memory, preserve it
       file:
         cachedState?.file?.previewDataUrl && parsed.file
@@ -904,6 +862,37 @@ export function paReset(projectId?: string) {
   const id = getResolvedProjectId(projectId);
   const clean = createEmptyPlanState(id);
   writePlanState(id, clean);
+}
+
+export function paApplyExtraction(
+  extraction: {
+    rooms: Room[];
+    walls?: Wall[];
+    openings?: Opening[];
+    projectName?: string;
+  },
+  projectId?: string,
+) {
+  const id = getResolvedProjectId(projectId);
+  const current = readPlanState(id);
+  const rooms = extraction.rooms.length > 0 ? extraction.rooms : current.rooms;
+  const walls = extraction.walls && extraction.walls.length > 0 ? extraction.walls : current.walls;
+  const openings =
+    extraction.openings && extraction.openings.length > 0 ? extraction.openings : current.openings;
+  const { quantities, constituents } = deriveQuantities(rooms, walls, openings, current.keyParams);
+  writePlanState(id, {
+    ...current,
+    rooms,
+    walls,
+    openings,
+    projectName: extraction.projectName || current.projectName,
+    quantities,
+    constituents,
+    boqItems: deriveBOQItems(quantities),
+  });
+  if (extraction.projectName) {
+    updateActiveProject({ name: extraction.projectName });
+  }
 }
 
 export const boqTotal = (items: BOQItem[]) =>

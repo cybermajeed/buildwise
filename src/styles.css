@@ -5,36 +5,50 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Design system definition.
+ * Jobright-inspired Mint / Ink / White Design System (design.md)
  *
- * The @theme inline block maps CSS custom properties to Tailwind utility
- * classes (e.g. --color-primary -> bg-primary, text-primary).
- *
- * The :root and .dark blocks define the actual color values using oklch.
- * All colors MUST use oklch format.
- *
- * To add a new semantic color:
- * 1. Add the variable to :root (light value) and .dark (dark value)
- * 2. Register it in @theme inline as --color-<name>: var(--<name>)
+ * Core Tokens:
+ * - Spring Mint (--color-primary: #00f0a0)
+ * - Canvas Mint (--color-canvas-mint: #ecffe0)
+ * - Ink (--color-ink: #000000)
+ * - Canvas (--color-canvas: #ffffff)
+ * - Surface Soft (--color-surface-soft: #f2f4f5)
+ * - Hairline (--color-hairline: #e5e7eb)
+ * - Display Font: Titillium Web (700 bold condensed)
+ * - Body Font: Inter (300 light / 500 regular / 600 medium)
  */
 
 @theme inline {
-  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: "Titillium Web", "Arial Narrow", ui-sans-serif, sans-serif;
+
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 28px;
+  --radius-2xl: 32px;
+  --radius-3xl: 36px;
+  --radius-4xl: 40px;
+  --radius-full: 9999px;
+
+  --color-primary: #00f0a0;
+  --color-primary-foreground: #000000;
+  --color-on-primary: #000000;
+
+  --color-canvas: #ffffff;
+  --color-canvas-mint: #ecffe0;
+  --color-surface-soft: #f2f4f5;
+  --color-hairline: #e5e7eb;
+  --color-ink: #000000;
+  --color-muted-text: #86909c;
+  --color-on-dark: #ffffff;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -46,12 +60,7 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-ring-offset-background: var(--background);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
+
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -63,77 +72,72 @@
 }
 
 :root {
-  --radius: 0.875rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.21 0.03 256);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.03 256);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.03 256);
-  --primary: oklch(0.52 0.16 255);
-  --primary-foreground: oklch(0.99 0.005 250);
-  --secondary: oklch(0.968 0.008 250);
-  --secondary-foreground: oklch(0.32 0.03 256);
-  --muted: oklch(0.968 0.008 250);
-  --muted-foreground: oklch(0.53 0.026 256);
-  --accent: oklch(0.945 0.028 250);
-  --accent-foreground: oklch(0.42 0.13 255);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.918 0.012 252);
-  --input: oklch(0.9 0.014 252);
-  --ring: oklch(0.6 0.13 255);
-  --shadow-soft: 0 1px 2px oklch(0.21 0.03 256 / 0.04), 0 12px 32px -12px oklch(0.21 0.03 256 / 0.14);
-  --shadow-lift: 0 2px 4px oklch(0.21 0.03 256 / 0.05), 0 20px 44px -16px oklch(0.42 0.13 255 / 0.28);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.984 0.003 247.858);
-  --sidebar-foreground: oklch(0.129 0.042 264.695);
-  --sidebar-primary: oklch(0.208 0.042 265.755);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.968 0.007 247.896);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.929 0.013 255.508);
-  --sidebar-ring: oklch(0.704 0.04 256.788);
+  --radius: 1.5rem;
+  --background: #ffffff;
+  --foreground: #000000;
+  --card: #ffffff;
+  --card-foreground: #000000;
+  --popover: #ffffff;
+  --popover-foreground: #000000;
+
+  /* Spring Mint accent */
+  --primary: #00f0a0;
+  --primary-foreground: #000000;
+
+  --secondary: #f2f4f5;
+  --secondary-foreground: #000000;
+  --muted: #f2f4f5;
+  --muted-foreground: #86909c;
+  --accent: #ecffe0;
+  --accent-foreground: #000000;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #e5e7eb;
+  --input: #e5e7eb;
+  --ring: #00f0a0;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #000000;
+  --sidebar-primary: #000000;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ecffe0;
+  --sidebar-accent-foreground: #000000;
+  --sidebar-border: #e5e7eb;
+  --sidebar-ring: #00f0a0;
 }
 
-
 .dark {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.208 0.042 265.755);
-  --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: oklch(0.984 0.003 247.858);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.208 0.042 265.755);
-  --sidebar-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.279 0.041 260.031);
-  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.551 0.027 264.364);
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #0a0a0a;
+  --card-foreground: #ffffff;
+  --popover: #0a0a0a;
+  --popover-foreground: #ffffff;
+
+  --primary: #00f0a0;
+  --primary-foreground: #000000;
+  --secondary: #171717;
+  --secondary-foreground: #ffffff;
+  --muted: #171717;
+  --muted-foreground: #9ca3af;
+  --accent: #052e16;
+  --accent-foreground: #00f0a0;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #262626;
+  --input: #262626;
+  --ring: #00f0a0;
+
+  --sidebar: #050505;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #00f0a0;
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #171717;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #262626;
+  --sidebar-ring: #00f0a0;
 }
 
 @layer base {
@@ -148,7 +152,124 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  h1, h2, h3 {
-    letter-spacing: -0.02em;
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.025em;
   }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Jobright Design Primitives (design.md)
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+/* Dual Pill CTA Buttons */
+.btn-pill-black {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  background-color: #000000;
+  color: #ffffff;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  padding: 0.75rem 2rem;
+  font-size: 0.875rem;
+  line-height: 1;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+.btn-pill-black:hover {
+  background-color: #1f1f1f;
+  transform: translateY(-1px);
+}
+
+.btn-pill-mint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  background-color: #00f0a0;
+  color: #000000;
+  border: 1px solid #000000;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  padding: 0.75rem 2rem;
+  font-size: 0.875rem;
+  line-height: 1;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 240, 160, 0.25);
+}
+.btn-pill-mint:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.btn-pill-white {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  background-color: #ffffff;
+  color: #000000;
+  border: 1px solid #e5e7eb;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  padding: 0.625rem 1.5rem;
+  font-size: 0.8125rem;
+  line-height: 1;
+  transition: all 0.15s ease;
+}
+.btn-pill-white:hover {
+  background-color: #f2f4f5;
+  border-color: #d1d5db;
+}
+
+.btn-pill-sm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border-radius: 9999px;
+  background-color: #000000;
+  color: #ffffff;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  padding: 0.4rem 1.125rem;
+  font-size: 0.75rem;
+  line-height: 1;
+  transition: all 0.15s ease;
+}
+.btn-pill-sm:hover {
+  background-color: #1f1f1f;
+}
+
+/* Rounded Cards & Asymmetric Feature Cards */
+.feature-card {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 40px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+.feature-card-asymmetric {
+  border-radius: 40px 40px 40px 0px;
+}
+
+/* Marquee for Black Job/Material Ticker */
+@keyframes ticker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-ticker {
+  display: flex;
+  width: max-content;
+  animation: ticker 25s linear infinite;
+}
+.animate-ticker:hover {
+  animation-play-state: paused;
 }
