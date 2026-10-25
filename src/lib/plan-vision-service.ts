@@ -189,7 +189,10 @@ export async function extractWithTesseract(
     const fullText = result.data.text || "";
     const lines = result.data.lines
       ? result.data.lines.map((l) => l.text.trim()).filter((l) => l.length > 0)
-      : fullText.split("\n").map((l) => l.trim()).filter((l) => l.length > 0);
+      : fullText
+          .split("\n")
+          .map((l) => l.trim())
+          .filter((l) => l.length > 0);
 
     const discoveredRooms: Room[] = [];
 
