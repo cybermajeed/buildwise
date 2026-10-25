@@ -16,9 +16,7 @@ import {
 import { Page } from "@/components/site-chrome";
 import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
-import {
-  testVisionConnection,
-} from "@/lib/plan-vision-service";
+import { testVisionConnection } from "@/lib/plan-vision-service";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -418,10 +416,13 @@ function SettingsPage() {
                 <div className="border-b border-border pb-4 mb-5">
                   <div className="flex items-center gap-2">
                     <Cpu size={18} className="text-primary" />
-                    <h2 className="text-lg font-semibold font-display">In-Browser Blueprint OCR Engine</h2>
+                    <h2 className="text-lg font-semibold font-display">
+                      In-Browser Blueprint OCR Engine
+                    </h2>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Architectural floor plan dimension extraction runs completely client-side in your browser via WebAssembly.
+                    Architectural floor plan dimension extraction runs completely client-side in
+                    your browser via WebAssembly.
                   </p>
                 </div>
 
@@ -429,7 +430,8 @@ function SettingsPage() {
                   <div className="max-w-xl rounded-2xl border border-border bg-secondary/30 p-5 text-xs text-muted-foreground space-y-3">
                     <div className="flex items-center justify-between pb-3 border-b border-border">
                       <span className="font-semibold text-foreground font-display flex items-center gap-2 text-sm">
-                        <ShieldCheck size={16} className="text-emerald-500" /> Engine Status: Active & Operational
+                        <ShieldCheck size={16} className="text-emerald-500" /> Engine Status: Active
+                        & Operational
                       </span>
                       <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-mono text-[10px] font-bold">
                         Client-Side Wasm
@@ -438,19 +440,31 @@ function SettingsPage() {
 
                     <div className="grid grid-cols-2 gap-3 pt-1 text-[11px]">
                       <div>
-                        <span className="text-muted-foreground block text-[10px] uppercase tracking-wider font-semibold">Engine Core</span>
+                        <span className="text-muted-foreground block text-[10px] uppercase tracking-wider font-semibold">
+                          Engine Core
+                        </span>
                         <span className="font-medium text-foreground">Tesseract.js v5 (Wasm)</span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground block text-[10px] uppercase tracking-wider font-semibold">Cloud Connectivity</span>
-                        <span className="font-medium text-foreground">None Required (100% Offline)</span>
+                        <span className="text-muted-foreground block text-[10px] uppercase tracking-wider font-semibold">
+                          Cloud Connectivity
+                        </span>
+                        <span className="font-medium text-foreground">
+                          None Required (100% Offline)
+                        </span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground block text-[10px] uppercase tracking-wider font-semibold">Dimension Parser</span>
-                        <span className="font-medium text-foreground">IS Imperial (X'-Y") & Metric</span>
+                        <span className="text-muted-foreground block text-[10px] uppercase tracking-wider font-semibold">
+                          Dimension Parser
+                        </span>
+                        <span className="font-medium text-foreground">
+                          IS Imperial (X'-Y") & Metric
+                        </span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground block text-[10px] uppercase tracking-wider font-semibold">Privacy Boundary</span>
+                        <span className="text-muted-foreground block text-[10px] uppercase tracking-wider font-semibold">
+                          Privacy Boundary
+                        </span>
                         <span className="font-medium text-foreground">Strictly Local Device</span>
                       </div>
                     </div>

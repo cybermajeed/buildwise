@@ -38,7 +38,10 @@ function TermsPage() {
         {/* Highlighted Civil Engineering Disclaimer */}
         <div className="feature-card border border-amber-300 dark:border-amber-800 bg-amber-50/70 dark:bg-amber-950/20 p-6 sm:p-8 mb-10 text-amber-950 dark:text-amber-200">
           <div className="flex items-start gap-4">
-            <AlertTriangle className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" size={22} />
+            <AlertTriangle
+              className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400"
+              size={22}
+            />
             <div className="space-y-2 text-xs sm:text-sm leading-relaxed">
               <strong className="font-bold block text-base font-display">
                 Critical Engineering & Estimation Disclaimer
@@ -66,18 +69,22 @@ function TermsPage() {
             <p>
               By accessing, browsing, or using the BuildWise application, progressive web app (PWA),
               or associated calculators ("Service"), you acknowledge that you have read, understood,
-              and agree to be bound by these Terms of Service ("Terms"). If you do not agree to these
-              Terms, do not use the Service.
+              and agree to be bound by these Terms of Service ("Terms"). If you do not agree to
+              these Terms, do not use the Service.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-bold text-foreground">2. Scope of Service & Architecture</h2>
+            <h2 className="text-xl font-bold text-foreground">
+              2. Scope of Service & Architecture
+            </h2>
             <p>
               BuildWise provides local, browser-based construction estimation utilities, including:
             </p>
             <ul className="list-disc pl-5 space-y-1 mt-2">
-              <li>Material requirement calculators (cement, brick, concrete, steel, paint, tile).</li>
+              <li>
+                Material requirement calculators (cement, brick, concrete, steel, paint, tile).
+              </li>
               <li>Plan analysis and dimension breakdown extraction.</li>
               <li>Quantity takeoff derivation and Bill of Quantities (BOQ) preparation.</li>
               <li>Project cost management and exportable PDF / CSV estimates.</li>
@@ -91,23 +98,21 @@ function TermsPage() {
 
           <section>
             <h2 className="text-xl font-bold text-foreground">3. User Content & Floor Plans</h2>
-            <p>
-              When you upload floor plans (PDF, JPG, PNG) into the plan analysis module:
-            </p>
+            <p>When you upload floor plans (PDF, JPG, PNG) into the plan analysis module:</p>
             <ul className="list-disc pl-5 space-y-1 mt-2">
               <li>
                 <strong>Ownership:</strong> You retain complete, unconditional intellectual property
-                rights and ownership of all uploaded architectural drawings, floor plans, and project
-                notes.
+                rights and ownership of all uploaded architectural drawings, floor plans, and
+                project notes.
               </li>
               <li>
                 <strong>Local Processing:</strong> Plan parsing and image rendering occur locally
-                within your browser environment. Your files are not transmitted to or stored on remote
-                third-party AI training databases.
+                within your browser environment. Your files are not transmitted to or stored on
+                remote third-party AI training databases.
               </li>
               <li>
-                <strong>Lawful Content:</strong> You represent that you hold the necessary rights and
-                licenses for any blueprints or engineering documents uploaded to the platform.
+                <strong>Lawful Content:</strong> You represent that you hold the necessary rights
+                and licenses for any blueprints or engineering documents uploaded to the platform.
               </li>
             </ul>
           </section>
@@ -115,8 +120,8 @@ function TermsPage() {
           <section>
             <h2 className="text-xl font-bold text-foreground">4. Subscriptions & Payments</h2>
             <p>
-              BuildWise provides access to core estimation modules as well as optional premium
-              tiers (Pro and Business). For premium subscriptions:
+              BuildWise provides access to core estimation modules as well as optional premium tiers
+              (Pro and Business). For premium subscriptions:
             </p>
             <ul className="list-disc pl-5 space-y-1 mt-2">
               <li>
@@ -140,9 +145,9 @@ function TermsPage() {
           <section>
             <h2 className="text-xl font-bold text-foreground">5. Limitation of Liability</h2>
             <p>
-              TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, BUILDWISE AND ITS OPERATORS SHALL NOT
-              BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, CONSEQUENTIAL, SPECIAL, OR EXEMPLARY
-              DAMAGES, INCLUDING BUT NOT LIMITED TO:
+              TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, BUILDWISE AND ITS OPERATORS SHALL
+              NOT BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, CONSEQUENTIAL, SPECIAL, OR
+              EXEMPLARY DAMAGES, INCLUDING BUT NOT LIMITED TO:
             </p>
             <ul className="list-disc pl-5 space-y-1 mt-2">
               <li>
@@ -150,22 +155,29 @@ function TermsPage() {
               </li>
               <li>Structural failures, contractor over-runs, labor disputes, or project delays.</li>
               <li>Fluctuations in local market material pricing or supply-chain unavailability.</li>
-              <li>Loss of locally cached project data resulting from browser clearing or device failure.</li>
+              <li>
+                Loss of locally cached project data resulting from browser clearing or device
+                failure.
+              </li>
             </ul>
           </section>
 
           <section>
-            <h2 className="text-xl font-bold text-foreground">6. Local Data Backup Responsibility</h2>
+            <h2 className="text-xl font-bold text-foreground">
+              6. Local Data Backup Responsibility
+            </h2>
             <p>
               Because BuildWise prioritizes user privacy and stores data client-side without remote
-              user accounts, you are solely responsible for exporting your project data (via PDF, CSV,
-              or workspace JSON backups) to prevent unintended data loss when clearing browser history
-              or changing devices.
+              user accounts, you are solely responsible for exporting your project data (via PDF,
+              CSV, or workspace JSON backups) to prevent unintended data loss when clearing browser
+              history or changing devices.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-bold text-foreground">7. Governing Law & Dispute Resolution</h2>
+            <h2 className="text-xl font-bold text-foreground">
+              7. Governing Law & Dispute Resolution
+            </h2>
             <p>
               These Terms shall be governed by and construed in accordance with the laws of India,
               without regard to conflict of law principles. Any legal suit, action, or proceeding

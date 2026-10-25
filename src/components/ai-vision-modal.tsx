@@ -27,7 +27,8 @@ export function AIVisionModal({ isOpen, onClose }: AIVisionModalProps) {
         </div>
 
         <p className="text-xs text-[#86909c] mb-5 font-light leading-relaxed">
-          Blueprint dimension extraction runs completely client-side in your browser via Tesseract.js WebAssembly. Drawings and plans remain local to your device.
+          Blueprint dimension extraction runs completely client-side in your browser via
+          Tesseract.js WebAssembly. Drawings and plans remain local to your device.
         </p>
 
         <div className="space-y-3 rounded-2xl bg-[#f2f4f5] dark:bg-zinc-900 p-4 border border-[#e5e7eb] dark:border-zinc-800 text-xs">
@@ -41,11 +42,15 @@ export function AIVisionModal({ isOpen, onClose }: AIVisionModalProps) {
             </div>
           </div>
           <div className="flex items-start gap-2 text-black dark:text-white">
-            <CheckCircle2 size={16} className="text-[#00a86b] dark:text-[#00f0a0] shrink-0 mt-0.5" />
+            <CheckCircle2
+              size={16}
+              className="text-[#00a86b] dark:text-[#00f0a0] shrink-0 mt-0.5"
+            />
             <div>
               <span className="font-semibold block font-display">Architectural Parser</span>
               <span className="text-[11px] text-[#86909c]">
-                Automatically normalizes imperial feet-inches (e.g. 14&apos;-6&quot; × 12&apos;-0&quot;) and metric dimensions.
+                Automatically normalizes imperial feet-inches (e.g. 14&apos;-6&quot; ×
+                12&apos;-0&quot;) and metric dimensions.
               </span>
             </div>
           </div>

@@ -589,7 +589,8 @@ function ModulePlanDrawings({
             Architectural Plan & Blueprint Analysis
           </h2>
           <p className="text-xs text-[#86909c] mt-0.5">
-            In-browser OCR detects room tags, dimensions, and wall boundaries directly within your device.
+            In-browser OCR detects room tags, dimensions, and wall boundaries directly within your
+            device.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
@@ -835,7 +836,8 @@ function ModulePlanDrawings({
                 disabled={isAnalyzing}
                 className="text-primary hover:underline font-semibold flex items-center gap-1 cursor-pointer"
               >
-                <RefreshCw size={12} className={isAnalyzing ? "animate-spin" : ""} /> Scan Drawing (OCR)
+                <RefreshCw size={12} className={isAnalyzing ? "animate-spin" : ""} /> Scan Drawing
+                (OCR)
               </button>
             )}
             {state.file && (
@@ -937,7 +939,6 @@ function ModulePlanDrawings({
           )}
         </div>
       </div>
-
     </div>
   );
 }
@@ -1824,9 +1825,8 @@ function ModuleCostAnalytics({
 // ─────────────────────────────────────────────────────────────────────────────
 function ModuleReportsVersions({ onSaveVersion }: { onSaveVersion: () => void }) {
   const project = useActiveProject();
+  const paState = usePlanAnalysisStore(project?.id);
   if (!project) return null;
-
-  const paState = usePlanAnalysisStore(project.id);
 
   // Derive unified BOQ items (either project saved items or plan-derived BOQ items)
   const reportItems: ProjectItem[] =
@@ -1910,7 +1910,11 @@ function ModuleReportsVersions({ onSaveVersion }: { onSaveVersion: () => void })
     doc.text(`${carpetSqFt.toLocaleString("en-IN")} sq.ft`, left + 14, y + 32);
     doc.text(`${builtUpSqFt.toLocaleString("en-IN")} sq.ft`, left + 130, y + 32);
     doc.text(`${paState.rooms.length} spaces`, left + 260, y + 32);
-    doc.text(costPerSqFt > 0 ? `${formatRupee(costPerSqFt)}/sq.ft` : "Calculated", left + 390, y + 32);
+    doc.text(
+      costPerSqFt > 0 ? `${formatRupee(costPerSqFt)}/sq.ft` : "Calculated",
+      left + 390,
+      y + 32,
+    );
 
     y += 58;
 
@@ -2034,12 +2038,7 @@ function ModuleReportsVersions({ onSaveVersion }: { onSaveVersion: () => void })
 
   const downloadCsv = () => {
     const headers = ["Trade / Item Specification", "Quantity", "Rate (INR)", "Amount (INR)"];
-    const rows = reportItems.map((i) => [
-      `"${i.label}"`,
-      `"${i.quantity}"`,
-      i.rate || 0,
-      i.cost,
-    ]);
+    const rows = reportItems.map((i) => [`"${i.label}"`, `"${i.quantity}"`, i.rate || 0, i.cost]);
     const csv =
       "data:text/csv;charset=utf-8," +
       headers.join(",") +
@@ -2067,7 +2066,8 @@ function ModuleReportsVersions({ onSaveVersion }: { onSaveVersion: () => void })
             Executive Report & Revision Snapshots
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Concise, itemized civil deliverables prepared in accordance with IS 1200 quantity takeoff standards.
+            Concise, itemized civil deliverables prepared in accordance with IS 1200 quantity
+            takeoff standards.
           </p>
         </div>
         <div className="flex gap-2">
@@ -2096,7 +2096,14 @@ function ModuleReportsVersions({ onSaveVersion }: { onSaveVersion: () => void })
             </div>
             <h3 className="text-2xl font-bold font-display text-foreground">{project.name}</h3>
             <p className="text-xs text-muted-foreground mt-1">
-              Client: <span className="font-semibold text-foreground">{project.clientName || "Private Client"}</span> • Location: <span className="font-semibold text-foreground">{project.location || "Site Location"}</span>
+              Client:{" "}
+              <span className="font-semibold text-foreground">
+                {project.clientName || "Private Client"}
+              </span>{" "}
+              • Location:{" "}
+              <span className="font-semibold text-foreground">
+                {project.location || "Site Location"}
+              </span>
             </p>
           </div>
           <div className="text-left sm:text-right">
@@ -2180,21 +2187,27 @@ function ModuleReportsVersions({ onSaveVersion }: { onSaveVersion: () => void })
               </span>
             </div>
             <div className="rounded-xl border border-border bg-background p-3">
-              <span className="text-[10px] text-muted-foreground block font-medium">River / M-Sand</span>
+              <span className="text-[10px] text-muted-foreground block font-medium">
+                River / M-Sand
+              </span>
               <span className="font-bold text-sm text-foreground block mt-0.5">
                 {sandConstituent?.quantity || 0} cft
               </span>
               <span className="text-[10px] text-muted-foreground">Zone II fine aggregate</span>
             </div>
             <div className="rounded-xl border border-border bg-background p-3">
-              <span className="text-[10px] text-muted-foreground block font-medium">Coarse Aggregate</span>
+              <span className="text-[10px] text-muted-foreground block font-medium">
+                Coarse Aggregate
+              </span>
               <span className="font-bold text-sm text-foreground block mt-0.5">
                 {aggregateConstituent?.quantity || 0} cft
               </span>
               <span className="text-[10px] text-muted-foreground">20mm / 10mm metal</span>
             </div>
             <div className="rounded-xl border border-border bg-background p-3">
-              <span className="text-[10px] text-muted-foreground block font-medium">Modular Bricks</span>
+              <span className="text-[10px] text-muted-foreground block font-medium">
+                Modular Bricks
+              </span>
               <span className="font-bold text-sm text-foreground block mt-0.5">
                 {(bricksConstituent?.quantity || 0).toLocaleString("en-IN")} pcs
               </span>
@@ -2223,7 +2236,9 @@ function ModuleReportsVersions({ onSaveVersion }: { onSaveVersion: () => void })
                   <tr key={item.slug} className="hover:bg-secondary/20 transition-colors">
                     <td className="px-4 py-2.5 font-medium text-foreground">{item.label}</td>
                     <td className="px-4 py-2.5 font-mono text-muted-foreground">{item.quantity}</td>
-                    <td className="px-4 py-2.5 font-mono text-muted-foreground">{inr(item.rate || 0)}</td>
+                    <td className="px-4 py-2.5 font-mono text-muted-foreground">
+                      {inr(item.rate || 0)}
+                    </td>
                     <td className="px-4 py-2.5 font-mono font-bold text-foreground text-right">
                       {inr(item.cost)}
                     </td>
@@ -2250,13 +2265,21 @@ function ModuleReportsVersions({ onSaveVersion }: { onSaveVersion: () => void })
           </div>
           <div className="pt-2 border-t border-border flex justify-between items-center text-sm font-bold text-foreground">
             <span className="font-display">Grand Total Estimated Project Budget:</span>
-            <span className="text-base font-black font-display text-foreground">{inr(grandTotalCost)}</span>
+            <span className="text-base font-black font-display text-foreground">
+              {inr(grandTotalCost)}
+            </span>
           </div>
         </div>
 
         {/* 5. Legal & Technical Disclaimer */}
         <p className="text-[11px] text-muted-foreground leading-relaxed pt-2 border-t border-border font-light">
-          <strong className="font-semibold text-foreground">Estimation & Compliance Basis:</strong> This preliminary Bill of Quantities and cost report is compiled pursuant to IS 1200 measurement conventions for building works. All quantities are derived from drawing geometry and current benchmark market rates. Final construction expenditure remains subject to structural RCC engineering drawings, geotechnical soil investigations, and local vendor material pricing at the time of procurement. Not a binding fixed-bid civil contract.
+          <strong className="font-semibold text-foreground">Estimation & Compliance Basis:</strong>{" "}
+          This preliminary Bill of Quantities and cost report is compiled pursuant to IS 1200
+          measurement conventions for building works. All quantities are derived from drawing
+          geometry and current benchmark market rates. Final construction expenditure remains
+          subject to structural RCC engineering drawings, geotechnical soil investigations, and
+          local vendor material pricing at the time of procurement. Not a binding fixed-bid civil
+          contract.
         </p>
       </div>
 
@@ -2277,7 +2300,8 @@ function ModuleReportsVersions({ onSaveVersion }: { onSaveVersion: () => void })
 
         {!project.versions || project.versions.length === 0 ? (
           <p className="text-xs text-muted-foreground py-4 text-center">
-            No version snapshots recorded yet. Click &quot;Save Snapshot&quot; to bookmark your current estimate.
+            No version snapshots recorded yet. Click &quot;Save Snapshot&quot; to bookmark your
+            current estimate.
           </p>
         ) : (
           <div className="divide-y divide-border text-xs">
@@ -2289,7 +2313,9 @@ function ModuleReportsVersions({ onSaveVersion }: { onSaveVersion: () => void })
                     {new Date(v.createdAt).toLocaleString()}
                   </span>
                 </div>
-                <div className="font-bold tabular-nums text-primary font-mono">{inr(v.totalCost)}</div>
+                <div className="font-bold tabular-nums text-primary font-mono">
+                  {inr(v.totalCost)}
+                </div>
               </div>
             ))}
           </div>
