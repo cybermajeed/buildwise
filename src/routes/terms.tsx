@@ -115,7 +115,7 @@ function TermsPage() {
           <section>
             <h2 className="text-xl font-bold text-foreground">4. Subscriptions & Payments</h2>
             <p>
-              BuildWise offers free access to core estimation modules as well as optional premium
+              BuildWise provides access to core estimation modules as well as optional premium
               tiers (Pro and Business). For premium subscriptions:
             </p>
             <ul className="list-disc pl-5 space-y-1 mt-2">

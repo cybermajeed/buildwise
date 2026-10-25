@@ -8,9 +8,9 @@ export const Route = createFileRoute("/subscription")({
 
 const plans = [
   {
-    name: "Free Starter",
+    name: "Starter",
     price: "₹0",
-    period: "/forever",
+    period: "/standard",
     description: "Essential estimation tools for homeowners and single contractors.",
     features: [
       "Standard Civil Calculators",
@@ -28,7 +28,7 @@ const plans = [
     description: "For professional contractors, civil engineers, and quantity surveyors.",
     features: [
       "Unlimited Construction Projects",
-      "AI Blueprint Vision Extraction (Gemini / GPT-4o)",
+      "In-Browser Blueprint OCR Engine",
       "IS 1200 Standard Quantity Takeoffs",
       "Dynamic Bill of Quantities (BOQ)",
       "Instant Material Constituent Breakdown",

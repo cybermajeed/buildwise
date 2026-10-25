@@ -57,7 +57,7 @@ const LIVE_MATERIAL_TICKER = [
   { name: "Skilled Mason / Barbender", rate: "₹1,150 / day", delta: "0.0%" },
 ];
 
-export function IndexPage() {
+function IndexPage() {
   const { projects } = useAppStore();
   const navigate = useNavigate();
   const creatorRef = useRef<HTMLDivElement>(null);
@@ -71,12 +71,16 @@ export function IndexPage() {
     if (e) e.preventDefault();
     const finalName = projectName.trim() || `Construction Project ${projects.length + 1}`;
     const id = createProject(finalName);
-    updateActiveProject({
-      clientName: clientName.trim() || "Private Client",
-      location: location.trim() || "Main Site",
-    });
-    toast.success(`Project "${finalName}" created! Opening workspace.`);
-    navigate({ to: "/project", search: { tab: "plan" } });
+    updateActiveProject(
+      {
+        clientName: clientName.trim() || "Private Client",
+        location: location.trim() || "Main Site",
+        savedAt: new Date().toISOString(),
+      },
+      id,
+    );
+    toast.success(`Project "${finalName}" created & saved locally!`);
+    navigate({ to: "/project", search: { tab: "plan", projectId: id } });
   };
 
   const scrollToCreator = () => {
@@ -84,7 +88,7 @@ export function IndexPage() {
   };
 
   return (
-    <Page>
+    <Page fullWidth>
       {/* ─── 1. PALE-MINT HERO BAND (Jobright Signature Rhythm) ───────────────── */}
       <section className="bg-[#ecffe0] dark:bg-zinc-950 border-b border-[#e5e7eb] dark:border-zinc-800 py-16 sm:py-24 px-4 sm:px-8">
         <div className="max-w-5xl mx-auto text-center">
@@ -105,8 +109,9 @@ export function IndexPage() {
 
           {/* Light Airy Lead Copy */}
           <p className="mt-6 text-base sm:text-xl text-[#86909c] font-light max-w-2xl mx-auto leading-relaxed">
-            Extract room dimensions, structural walls, and openings directly from blueprints. Calculate
-            IS 1200 compliant bills of quantities and real-time material requirements in seconds.
+            Extract room dimensions, structural walls, and openings directly from blueprints.
+            Calculate IS 1200 compliant bills of quantities and real-time material requirements in
+            seconds.
           </p>
 
           {/* Dual Pill Button CTA System */}
@@ -171,8 +176,8 @@ export function IndexPage() {
               Create or Launch a Project
             </h2>
             <p className="text-sm text-[#86909c] mt-2 max-w-xl mx-auto">
-              Every project provides an end-to-end dedicated workspace: Blueprint upload, QS takeoff,
-              BOQ rates, civil calculators, and report exports.
+              Every project provides an end-to-end dedicated workspace: Blueprint upload, QS
+              takeoff, BOQ rates, civil calculators, and report exports.
             </p>
           </div>
 
@@ -248,14 +253,17 @@ export function IndexPage() {
                     <option value="Single Story Bungalow">Single Story Bungalow</option>
                     <option value="Commercial Complex (G+3)">Commercial Complex (G+3)</option>
                     <option value="Apartment / Multi-Unit">Apartment / Multi-Unit</option>
-                    <option value="Interior Fitout & Renovation">Interior Fitout & Renovation</option>
+                    <option value="Interior Fitout & Renovation">
+                      Interior Fitout & Renovation
+                    </option>
                   </select>
                 </label>
               </div>
 
               <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <p className="text-xs text-[#86909c]">
-                  Once created, upload an architectural plan in the workspace to automatically extract schedules.
+                  Once created, upload an architectural plan in the workspace to automatically
+                  extract schedules.
                 </p>
                 <div className="flex items-center gap-3 w-full sm:w-auto">
                   <button
@@ -297,7 +305,8 @@ export function IndexPage() {
                   No active projects yet
                 </h4>
                 <p className="text-xs text-[#86909c] mt-1 max-w-sm mx-auto">
-                  Use the form above to initialize your first project and upload a blueprint drawing.
+                  Use the form above to initialize your first project and upload a blueprint
+                  drawing.
                 </p>
               </div>
             ) : (
@@ -316,7 +325,8 @@ export function IndexPage() {
                               {p.name}
                             </h4>
                             <p className="text-xs text-[#86909c] flex items-center gap-1 mt-1 truncate">
-                              <MapPin size={12} className="shrink-0" /> {p.location || "Site location not set"}
+                              <MapPin size={12} className="shrink-0" />{" "}
+                              {p.location || "Site location not set"}
                             </p>
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
@@ -398,9 +408,9 @@ export function IndexPage() {
               Blueprint Extraction With Zero Synthetic Hallucinations.
             </h2>
             <p className="mt-4 text-sm sm:text-base text-[#86909c] font-light leading-relaxed">
-              Upload your architectural floor plan, blueprint, or scan. Multimodal AI directly extracts
-              room dimensions, structural wall lengths, carpet areas, and door/window openings — without
-              generating inaccurate vector overlays.
+              Upload your architectural floor plan, blueprint, or scan. Multimodal AI directly
+              extracts room dimensions, structural wall lengths, carpet areas, and door/window
+              openings — without generating inaccurate vector overlays.
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
               <Link to="/project" search={{ tab: "plan" }} className="btn-pill-black">
@@ -433,7 +443,9 @@ export function IndexPage() {
                   <span className="font-semibold text-black dark:text-white pl-2">{r.room}</span>
                   <div className="flex items-center gap-3 pr-2">
                     <span className="text-[#86909c] font-mono">{r.dim}</span>
-                    <span className="font-bold text-black dark:text-[#00f0a0] font-mono">{r.area}</span>
+                    <span className="font-bold text-black dark:text-[#00f0a0] font-mono">
+                      {r.area}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -456,14 +468,26 @@ export function IndexPage() {
             <div className="mt-4 divide-y divide-[#e5e7eb] dark:divide-zinc-800 text-xs">
               {[
                 { item: "Excavation in Earthwork", qty: "84 m³", rate: "₹280", cost: "₹23,520" },
-                { item: "PCC 1:4:8 Foundation Bed", qty: "14.2 m³", rate: "₹4,200", cost: "₹59,640" },
-                { item: "RCC M25 Column & Beams", qty: "26.5 m³", rate: "₹6,800", cost: "₹1,80,200" },
+                {
+                  item: "PCC 1:4:8 Foundation Bed",
+                  qty: "14.2 m³",
+                  rate: "₹4,200",
+                  cost: "₹59,640",
+                },
+                {
+                  item: "RCC M25 Column & Beams",
+                  qty: "26.5 m³",
+                  rate: "₹6,800",
+                  cost: "₹1,80,200",
+                },
                 { item: "Brick Masonry 230mm", qty: "42 m³", rate: "₹5,400", cost: "₹2,26,800" },
               ].map((row) => (
                 <div key={row.item} className="py-2.5 flex items-center justify-between">
                   <div className="min-w-0 pr-2">
                     <p className="font-semibold text-black dark:text-white truncate">{row.item}</p>
-                    <span className="text-[10px] text-[#86909c]">{row.qty} @ {row.rate}</span>
+                    <span className="text-[10px] text-[#86909c]">
+                      {row.qty} @ {row.rate}
+                    </span>
                   </div>
                   <span className="font-bold text-black dark:text-white font-mono">{row.cost}</span>
                 </div>
@@ -479,8 +503,9 @@ export function IndexPage() {
               Synchronized Rates, Quantities, and Material Schedules.
             </h2>
             <p className="mt-4 text-sm sm:text-base text-[#86909c] font-light leading-relaxed">
-              Every dimension extracted from the blueprint links directly into your Bill of Quantities.
-              Sync with current Indian market prices or customize unit rates with instantaneous total budget recalculation.
+              Every dimension extracted from the blueprint links directly into your Bill of
+              Quantities. Sync with current Indian market prices or customize unit rates with
+              instantaneous total budget recalculation.
             </p>
             <div className="mt-8">
               <Link to="/material-prices" className="btn-pill-mint">
@@ -498,7 +523,8 @@ export function IndexPage() {
             Civil Engineering Rigor
           </span>
           <blockquote className="text-2xl sm:text-4xl font-bold font-display text-white leading-snug tracking-tight">
-            “Standardized quantity surveying adhering strictly to IS 1200 conventions. Eliminates contractor ambiguity, rogue markups, and unverified estimations.”
+            “Standardized quantity surveying adhering strictly to IS 1200 conventions. Eliminates
+            contractor ambiguity, rogue markups, and unverified estimations.”
           </blockquote>
 
           {/* Stat Numbers (Titillium Web Bold) */}
@@ -538,14 +564,15 @@ export function IndexPage() {
             Ready to Build With Verified Dimensions?
           </h2>
           <p className="mt-4 text-sm sm:text-base text-[#86909c] font-light max-w-xl mx-auto">
-            Create your project in seconds. Upload drawings, extract quantities, and generate client-ready estimates.
+            Create your project in seconds. Upload drawings, extract quantities, and generate
+            client-ready estimates.
           </p>
           <div className="mt-8 flex justify-center">
             <button
               onClick={scrollToCreator}
               className="btn-pill-black text-sm sm:text-base py-3.5 px-10 cursor-pointer"
             >
-              Start Your Project Free <ArrowRight size={16} />
+              Start Your Project <ArrowRight size={16} />
             </button>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { read as readAppStore, updateActiveProject } from "./project-store";
+import { read as readAppStore } from "./project-store";
 
 // ─── Domain Types ─────────────────────────────────────────────────────────────
 
@@ -373,17 +373,17 @@ export function deriveQuantities(
 // ─── Standard Market Rates (INR Defaults) ────────────────────────────────────
 
 export const DEFAULT_RATES: Record<string, number> = {
-  excavation: 260, // ₹ per m³
-  pcc_bed: 4800, // ₹ per m³
-  concrete: 6800, // ₹ per m³ (RCC with formwork)
-  brickwork_ext: 5400, // ₹ per m³
-  brickwork_int: 5200, // ₹ per m³
-  plastering: 240, // ₹ per m²
-  flooring: 650, // ₹ per m²
-  painting: 130, // ₹ per m²
-  steel: 72, // ₹ per kg
-  doors: 6500, // ₹ per unit
-  windows: 4200, // ₹ per unit
+  excavation: 280, // ₹ per m³ (Earthwork excavation & disposal)
+  pcc_bed: 4800, // ₹ per m³ (1:4:8 Lean bed concrete)
+  concrete: 7200, // ₹ per m³ (M20/M25 RCC with formwork & shuttering)
+  brickwork_ext: 5600, // ₹ per m³ (9" external brickwork in 1:6 mortar)
+  brickwork_int: 5400, // ₹ per m³ (4.5" partition brickwork)
+  plastering: 260, // ₹ per m² (12-15mm smooth cement plaster)
+  flooring: 750, // ₹ per m² (Vitrified tiles with bed & pointing)
+  painting: 140, // ₹ per m² (1 coat primer + 2 coats emulsion)
+  steel: 75, // ₹ per kg (Fe500D rebar cutting, bending, binding & placement)
+  doors: 7500, // ₹ per unit (Flush door with hardwood/granite frame & fittings)
+  windows: 4800, // ₹ per unit (3-track UPVC/aluminum sliding with glass)
 };
 
 export function deriveBOQItems(quantities: QuantityItem[]): BOQItem[] {
@@ -568,7 +568,6 @@ export function paSetProjectName(name: string, projectId?: string) {
   const id = getResolvedProjectId(projectId);
   const current = readPlanState(id);
   writePlanState(id, { ...current, projectName: name });
-  updateActiveProject({ name });
 }
 
 export function paSetFloorHeight(ft: number, projectId?: string) {
@@ -885,14 +884,11 @@ export function paApplyExtraction(
     rooms,
     walls,
     openings,
-    projectName: extraction.projectName || current.projectName,
+    projectName: current.projectName || extraction.projectName || "Floor Plan",
     quantities,
     constituents,
     boqItems: deriveBOQItems(quantities),
   });
-  if (extraction.projectName) {
-    updateActiveProject({ name: extraction.projectName });
-  }
 }
 
 export const boqTotal = (items: BOQItem[]) =>

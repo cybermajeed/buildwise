@@ -158,7 +158,7 @@ export function FloorPlanVisualizer({
           </div>
         ) : (
           /* Clean Blank State - No fake synthetic boxes */
-          <div className="flex flex-col items-center justify-center text-center p-8 max-w-md">
+          <div className="flex flex-col items-center justify-center text-center p-8 sm:p-12 max-w-md my-4">
             <div className="grid h-16 w-16 place-items-center rounded-full bg-white/5 border border-white/10 mb-4">
               <UploadCloud size={28} className="text-[#00f0a0]" />
             </div>
@@ -173,7 +173,7 @@ export function FloorPlanVisualizer({
               <button
                 type="button"
                 onClick={onUploadClick}
-                className="mt-6 btn-pill-mint cursor-pointer"
+                className="mt-6 mb-4 btn-pill-mint cursor-pointer shadow-lg hover:scale-105 active:scale-95 transition-all"
               >
                 <UploadCloud size={15} /> Upload Blueprint Drawing
               </button>

@@ -17,11 +17,7 @@ import { Page } from "@/components/site-chrome";
 import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
 import {
-  getStoredAIConfig,
-  saveAIConfig,
-  clearAIConfig,
   testVisionConnection,
-  type VisionProvider,
 } from "@/lib/plan-vision-service";
 import {
   AlertDialog,
@@ -51,14 +47,11 @@ export const Route = createFileRoute("/settings")({
 
 type SettingsTab = "profile" | "preferences" | "ai" | "data";
 
-export function SettingsPage() {
+function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // AI Vision settings state
-  const [aiProvider, setAiProvider] = useState<VisionProvider>("gemini");
-  const [aiApiKey, setAiApiKey] = useState("");
-  const [aiModel, setAiModel] = useState("gemini-1.5-flash");
+  // In-Browser Blueprint OCR status
   const [isTestingKey, setIsTestingKey] = useState(false);
 
   const [profile, setProfile] = useState({
@@ -94,12 +87,6 @@ export function SettingsPage() {
         // keep defaults
       }
     }
-    const savedAI = getStoredAIConfig();
-    if (savedAI) {
-      setAiProvider(savedAI.provider);
-      setAiApiKey(savedAI.apiKey);
-      setAiModel(savedAI.model || (savedAI.provider === "gemini" ? "gemini-1.5-flash" : "gpt-4o"));
-    }
   }, []);
 
   const handleSaveProfile = () => {
@@ -107,31 +94,10 @@ export function SettingsPage() {
     toast.success("Profile details saved successfully.");
   };
 
-  const handleSaveAIConfig = () => {
-    if (!aiApiKey.trim()) {
-      toast.error("Please enter an API key.");
-      return;
-    }
-    saveAIConfig({
-      provider: aiProvider,
-      apiKey: aiApiKey.trim(),
-      model: aiModel,
-    });
-    toast.success("AI Vision configuration saved.");
-  };
-
   const handleTestKey = async () => {
-    if (!aiApiKey.trim()) {
-      toast.error("Please enter an API key to test.");
-      return;
-    }
     setIsTestingKey(true);
     try {
-      const res = await testVisionConnection({
-        provider: aiProvider,
-        apiKey: aiApiKey.trim(),
-        model: aiModel,
-      });
+      const res = await testVisionConnection();
       if (res.success) {
         toast.success(res.message);
       } else {
@@ -140,12 +106,6 @@ export function SettingsPage() {
     } finally {
       setIsTestingKey(false);
     }
-  };
-
-  const handleClearAIConfig = () => {
-    clearAIConfig();
-    setAiApiKey("");
-    toast.info("AI Vision configuration cleared.");
   };
 
   const handleSavePreferences = () => {
@@ -218,7 +178,7 @@ export function SettingsPage() {
   }[] = [
     { id: "profile", label: "Profile & Company", icon: User },
     { id: "preferences", label: "Measurement & Units", icon: Sliders },
-    { id: "ai", label: "AI Vision & Extraction", icon: Sparkles },
+    { id: "ai", label: "Blueprint OCR Engine", icon: Cpu },
     { id: "data", label: "Backup & Data", icon: Database },
   ];
 
@@ -452,131 +412,59 @@ export function SettingsPage() {
               </div>
             )}
 
-            {/* AI VISION TAB */}
+            {/* BLUEPRINT OCR ENGINE TAB */}
             {activeTab === "ai" && (
               <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
                 <div className="border-b border-border pb-4 mb-5">
                   <div className="flex items-center gap-2">
-                    <Sparkles size={18} className="text-primary" />
-                    <h2 className="text-lg font-semibold">AI Vision Blueprint Extraction</h2>
+                    <Cpu size={18} className="text-primary" />
+                    <h2 className="text-lg font-semibold font-display">In-Browser Blueprint OCR Engine</h2>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Configure Google Gemini 1.5 or OpenAI GPT-4o Vision to extract exact room
-                    schedules, wall dimensions, and openings from uploaded architectural drawings.
+                    Architectural floor plan dimension extraction runs completely client-side in your browser via WebAssembly.
                   </p>
                 </div>
 
                 <div className="space-y-5">
-                  <div>
-                    <label className="text-xs font-semibold text-foreground block mb-2">
-                      AI Vision Model Provider
-                    </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAiProvider("gemini");
-                          setAiModel("gemini-1.5-flash");
-                        }}
-                        className={`flex flex-col items-start p-3 rounded-xl border text-xs font-semibold transition-all ${
-                          aiProvider === "gemini"
-                            ? "border-primary bg-primary/10 text-primary shadow-sm"
-                            : "border-border bg-background text-muted-foreground hover:bg-secondary"
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5 text-sm font-bold">
-                          <Cpu size={16} /> Google Gemini Vision
-                        </div>
-                        <span className="text-[11px] font-normal text-muted-foreground mt-1">
-                          Gemini 1.5 Flash (Fast, high-accuracy, free tier available)
-                        </span>
-                      </button>
+                  <div className="max-w-xl rounded-2xl border border-border bg-secondary/30 p-5 text-xs text-muted-foreground space-y-3">
+                    <div className="flex items-center justify-between pb-3 border-b border-border">
+                      <span className="font-semibold text-foreground font-display flex items-center gap-2 text-sm">
+                        <ShieldCheck size={16} className="text-emerald-500" /> Engine Status: Active & Operational
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-mono text-[10px] font-bold">
+                        Client-Side Wasm
+                      </span>
+                    </div>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAiProvider("openai");
-                          setAiModel("gpt-4o");
-                        }}
-                        className={`flex flex-col items-start p-3 rounded-xl border text-xs font-semibold transition-all ${
-                          aiProvider === "openai"
-                            ? "border-primary bg-primary/10 text-primary shadow-sm"
-                            : "border-border bg-background text-muted-foreground hover:bg-secondary"
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5 text-sm font-bold">
-                          <Sparkles size={16} /> OpenAI Vision
-                        </div>
-                        <span className="text-[11px] font-normal text-muted-foreground mt-1">
-                          GPT-4o Multimodal Vision
-                        </span>
-                      </button>
+                    <div className="grid grid-cols-2 gap-3 pt-1 text-[11px]">
+                      <div>
+                        <span className="text-muted-foreground block text-[10px] uppercase tracking-wider font-semibold">Engine Core</span>
+                        <span className="font-medium text-foreground">Tesseract.js v5 (Wasm)</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-[10px] uppercase tracking-wider font-semibold">Cloud Connectivity</span>
+                        <span className="font-medium text-foreground">None Required (100% Offline)</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-[10px] uppercase tracking-wider font-semibold">Dimension Parser</span>
+                        <span className="font-medium text-foreground">IS Imperial (X'-Y") & Metric</span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-[10px] uppercase tracking-wider font-semibold">Privacy Boundary</span>
+                        <span className="font-medium text-foreground">Strictly Local Device</span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="max-w-lg">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-xs font-semibold text-foreground flex items-center gap-1">
-                        <Key size={13} />{" "}
-                        {aiProvider === "gemini" ? "Google AI Studio API Key" : "OpenAI API Key"}
-                      </label>
-                      {aiProvider === "gemini" ? (
-                        <a
-                          href="https://aistudio.google.com/app/apikey"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[11px] text-primary hover:underline flex items-center gap-1"
-                        >
-                          Get free key <ExternalLink size={11} />
-                        </a>
-                      ) : (
-                        <a
-                          href="https://platform.openai.com/api-keys"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[11px] text-primary hover:underline flex items-center gap-1"
-                        >
-                          Get OpenAI key <ExternalLink size={11} />
-                        </a>
-                      )}
-                    </div>
-                    <input
-                      type="password"
-                      value={aiApiKey}
-                      onChange={(e) => setAiApiKey(e.target.value)}
-                      placeholder={aiProvider === "gemini" ? "AIzaSy..." : "sk-..."}
-                      className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs font-mono outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-                    />
-                    <p className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-1.5">
-                      <ShieldCheck size={13} className="text-green-500" />
-                      Key is saved strictly in your local browser storage. Required for live
-                      multi-pass OCR and exact dimension extraction.
-                    </p>
-                  </div>
-
-                  <div className="pt-3 flex flex-wrap items-center gap-3">
-                    <button
-                      onClick={handleSaveAIConfig}
-                      className="btn-pill-black !py-2 !px-4 !text-xs cursor-pointer"
-                    >
-                      <CheckCircle2 size={14} /> Save AI Vision Key
-                    </button>
+                  <div className="pt-2 flex items-center gap-3">
                     <button
                       type="button"
                       onClick={handleTestKey}
-                      disabled={isTestingKey || !aiApiKey.trim()}
-                      className="btn-pill-white !py-2 !px-4 !text-xs cursor-pointer disabled:opacity-50"
+                      disabled={isTestingKey}
+                      className="btn-pill-black !py-2 !px-4 !text-xs cursor-pointer disabled:opacity-50"
                     >
-                      {isTestingKey ? "Testing..." : "Test Connection"}
+                      {isTestingKey ? "Testing..." : "Test OCR Engine"}
                     </button>
-                    {aiApiKey && (
-                      <button
-                        onClick={handleClearAIConfig}
-                        className="text-xs text-destructive hover:underline font-semibold ml-auto"
-                      >
-                        Remove Key
-                      </button>
-                    )}
                   </div>
                 </div>
               </div>

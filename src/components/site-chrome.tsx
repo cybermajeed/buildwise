@@ -46,10 +46,25 @@ const globalNavLinks = [
 export const projectWorkflowModules = [
   { tab: "plan" as const, label: "1. Plan & Blueprint", icon: Layers, desc: "Upload Blueprint" },
   { tab: "takeoff" as const, label: "2. Dimensions & Takeoff", icon: Ruler, desc: "QS Quantities" },
-  { tab: "boq" as const, label: "3. Bill of Quantities", icon: FileSpreadsheet, desc: "Rates & Amounts" },
-  { tab: "calculators" as const, label: "4. Project Calculators", icon: Calculator, desc: "Add Materials" },
+  {
+    tab: "boq" as const,
+    label: "3. Bill of Quantities",
+    icon: FileSpreadsheet,
+    desc: "Rates & Amounts",
+  },
+  {
+    tab: "calculators" as const,
+    label: "4. Project Calculators",
+    icon: Calculator,
+    desc: "Add Materials",
+  },
   { tab: "cost" as const, label: "5. Cost & Budget", icon: PieChart, desc: "Estimate Breakdown" },
-  { tab: "reports" as const, label: "6. Reports & Versions", icon: FileText, desc: "PDF & Revisions" },
+  {
+    tab: "reports" as const,
+    label: "6. Reports & Versions",
+    icon: FileText,
+    desc: "PDF & Revisions",
+  },
 ] as const;
 
 export type ProjectModuleTab = (typeof projectWorkflowModules)[number]["tab"];
@@ -93,7 +108,8 @@ export function SiteSidebar() {
   const activeProject = useActiveProject() || projects[0];
 
   const isInProjectWorkspace = location.pathname.startsWith("/project");
-  const currentTab = ((location.search as Record<string, unknown>)?.["tab"] as ProjectModuleTab) || "plan";
+  const currentTab =
+    ((location.search as Record<string, unknown>)?.["tab"] as ProjectModuleTab) || "plan";
 
   const handleQuickSaveSnapshot = () => {
     saveVersion();
@@ -188,7 +204,10 @@ export function SiteSidebar() {
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <Icon size={15} className={isActive ? "text-[#00f0a0]" : "text-[#86909c]"} />
+                        <Icon
+                          size={15}
+                          className={isActive ? "text-[#00f0a0]" : "text-[#86909c]"}
+                        />
                         <span className="truncate">{m.label}</span>
                       </div>
                       {isActive && <ChevronRight size={13} className="shrink-0 text-[#00f0a0]" />}
@@ -202,11 +221,15 @@ export function SiteSidebar() {
             <div className="rounded-[20px] border border-[#00f0a0]/30 bg-[#ecffe0] dark:bg-emerald-950/20 p-3.5">
               <div className="flex items-center justify-between text-[11px]">
                 <span className="text-[#86909c] font-medium">BOQ Items:</span>
-                <span className="font-bold text-black dark:text-white">{activeProject.items.length} items</span>
+                <span className="font-bold text-black dark:text-white">
+                  {activeProject.items.length} items
+                </span>
               </div>
               <div className="flex items-center justify-between text-[11px] mt-1">
                 <span className="text-[#86909c] font-medium">Est. Cost:</span>
-                <span className="font-bold text-black dark:text-[#00f0a0] font-mono">{inr(totalCost(activeProject.items))}</span>
+                <span className="font-bold text-black dark:text-[#00f0a0] font-mono">
+                  {inr(totalCost(activeProject.items))}
+                </span>
               </div>
               <button
                 type="button"
@@ -228,9 +251,13 @@ export function SiteSidebar() {
                     key={l.to}
                     to={l.to}
                     activeOptions={{ exact: l.to === "/" }}
-                    activeProps={{ className: "bg-black text-white dark:bg-white dark:text-black font-semibold shadow-sm" }}
+                    activeProps={{
+                      className:
+                        "bg-black text-white dark:bg-white dark:text-black font-semibold shadow-sm",
+                    }}
                     inactiveProps={{
-                      className: "text-[#86909c] hover:bg-[#f2f4f5] dark:hover:bg-zinc-900 hover:text-black dark:hover:text-white",
+                      className:
+                        "text-[#86909c] hover:bg-[#f2f4f5] dark:hover:bg-zinc-900 hover:text-black dark:hover:text-white",
                     }}
                     className="flex items-center gap-2.5 rounded-full px-3.5 py-2 text-xs font-medium transition-colors"
                   >
@@ -320,7 +347,8 @@ export function MobileNav() {
   const activeProject = useActiveProject() || projects[0];
 
   const isInProjectWorkspace = location.pathname.startsWith("/project");
-  const currentTab = ((location.search as Record<string, unknown>)?.["tab"] as ProjectModuleTab) || "plan";
+  const currentTab =
+    ((location.search as Record<string, unknown>)?.["tab"] as ProjectModuleTab) || "plan";
 
   return (
     <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-[#e5e7eb] dark:border-zinc-800 bg-white/95 dark:bg-zinc-950/95 px-4 backdrop-blur-md sm:hidden">
@@ -352,7 +380,9 @@ export function MobileNav() {
                 <span className="text-[10px] font-semibold text-[#86909c] uppercase block">
                   Active Project Workspace
                 </span>
-                <span className="font-bold text-black dark:text-white text-sm font-display">{activeProject.name}</span>
+                <span className="font-bold text-black dark:text-white text-sm font-display">
+                  {activeProject.name}
+                </span>
                 <Link
                   to="/"
                   onClick={() => setOpen(false)}
@@ -395,9 +425,12 @@ export function MobileNav() {
                     to={l.to}
                     onClick={() => setOpen(false)}
                     activeOptions={{ exact: l.to === "/" }}
-                    activeProps={{ className: "bg-black text-white dark:bg-white dark:text-black font-semibold" }}
+                    activeProps={{
+                      className: "bg-black text-white dark:bg-white dark:text-black font-semibold",
+                    }}
                     inactiveProps={{
-                      className: "bg-white dark:bg-zinc-900 border border-[#e5e7eb] dark:border-zinc-800 text-[#86909c] hover:bg-secondary",
+                      className:
+                        "bg-white dark:bg-zinc-900 border border-[#e5e7eb] dark:border-zinc-800 text-[#86909c] hover:bg-secondary",
                     }}
                     className="flex flex-col items-center justify-center gap-1 rounded-[16px] p-3 text-xs font-medium text-center"
                   >
@@ -422,7 +455,10 @@ export function SiteFooter() {
           <span className="grid h-6 w-6 place-items-center rounded-full bg-[#00f0a0] text-black border border-black text-xs font-display font-bold">
             BW
           </span>
-          <p>© {new Date().getFullYear()} BuildWise — Indian Standard Construction Cost & Takeoff Monolith</p>
+          <p>
+            © {new Date().getFullYear()} BuildWise — Indian Standard Construction Cost & Takeoff
+            Monolith
+          </p>
         </div>
         <div className="flex items-center gap-6 font-medium">
           <Link to="/about" className="hover:text-black dark:hover:text-white transition-colors">
@@ -434,7 +470,10 @@ export function SiteFooter() {
           <Link to="/privacy" className="hover:text-black dark:hover:text-white transition-colors">
             Privacy Policy
           </Link>
-          <Link to="/subscription" className="hover:text-black dark:hover:text-white transition-colors">
+          <Link
+            to="/subscription"
+            className="hover:text-black dark:hover:text-white transition-colors"
+          >
             Pricing
           </Link>
         </div>
@@ -443,6 +482,23 @@ export function SiteFooter() {
   );
 }
 
-export function Page({ children }: { children: ReactNode }) {
-  return <main className="w-full">{children}</main>;
+export function Page({
+  children,
+  className = "",
+  fullWidth = false,
+}: {
+  children: ReactNode;
+  className?: string;
+  fullWidth?: boolean;
+}) {
+  if (fullWidth) {
+    return <main className={`w-full min-w-0 ${className}`}>{children}</main>;
+  }
+  return (
+    <main
+      className={`w-full min-w-0 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-24 ${className}`}
+    >
+      {children}
+    </main>
+  );
 }

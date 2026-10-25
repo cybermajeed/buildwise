@@ -114,13 +114,25 @@ export function setActiveProject(id: string | null) {
   write({ ...read(), activeProjectId: id });
 }
 
-export function updateActiveProject(updates: Partial<Omit<ProjectState, "id">>) {
+export function updateActiveProject(
+  updates: Partial<Omit<ProjectState, "id">>,
+  targetProjectId?: string,
+) {
   const state = read();
-  if (!state.activeProjectId) return;
-  const projects = state.projects.map((p) =>
-    p.id === state.activeProjectId ? { ...p, ...updates } : p,
-  );
+  const targetId = targetProjectId || state.activeProjectId;
+  if (!targetId) return;
+  const projects = state.projects.map((p) => (p.id === targetId ? { ...p, ...updates } : p));
   write({ ...state, projects });
+}
+
+export function saveProjectLocally(projectId?: string): string | null {
+  const state = read();
+  const targetId = projectId || state.activeProjectId;
+  if (!targetId) return null;
+  const now = new Date().toISOString();
+  const projects = state.projects.map((p) => (p.id === targetId ? { ...p, savedAt: now } : p));
+  write({ ...state, projects });
+  return now;
 }
 
 export function upsertItem(item: ProjectItem) {

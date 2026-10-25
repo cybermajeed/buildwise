@@ -54,6 +54,7 @@ import {
   setActiveProject,
   createProject,
   updateActiveProject,
+  saveProjectLocally,
   upsertItem,
   removeItem,
   saveVersion,
@@ -113,7 +114,7 @@ export const Route = createFileRoute("/project")({
   component: ProjectModularWorkspace,
 });
 
-export function ProjectModularWorkspace() {
+function ProjectModularWorkspace() {
   const { projects } = useAppStore();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
@@ -142,14 +143,14 @@ export function ProjectModularWorkspace() {
   const [headerClient, setHeaderClient] = useState(project?.clientName || "");
   const [headerLocation, setHeaderLocation] = useState(project?.location || "");
 
-  // Update local header state if project changes
-  const lastProjectIdRef = useRef(project?.id);
-  if (project && project.id !== lastProjectIdRef.current) {
-    lastProjectIdRef.current = project.id;
-    setHeaderName(project.name);
-    setHeaderClient(project.clientName || "");
-    setHeaderLocation(project.location || "");
-  }
+  // Sync local header editing state when project loads or updates
+  useEffect(() => {
+    if (project) {
+      setHeaderName(project.name);
+      setHeaderClient(project.clientName || "");
+      setHeaderLocation(project.location || "");
+    }
+  }, [project?.id, project?.name, project?.clientName, project?.location, project]);
 
   if (!project) {
     return (
@@ -184,20 +185,39 @@ export function ProjectModularWorkspace() {
   }
 
   const handleSaveHeaderDetails = () => {
-    updateActiveProject({
-      name: headerName.trim() || project.name,
-      clientName: headerClient.trim(),
-      location: headerLocation.trim(),
-      savedAt: new Date().toISOString(),
-    });
+    const trimmed = headerName.trim();
+    if (!trimmed) {
+      toast.error("Project name cannot be empty");
+      return;
+    }
+    updateActiveProject(
+      {
+        name: trimmed,
+        clientName: headerClient.trim(),
+        location: headerLocation.trim(),
+        savedAt: new Date().toISOString(),
+      },
+      project.id,
+    );
+    saveProjectLocally(project.id);
     setIsEditingHeader(false);
-    toast.success("Project details saved successfully!");
+    toast.success(`Project updated to "${trimmed}" & saved locally!`);
+  };
+
+  const handleSaveProjectLocally = () => {
+    const savedId = saveProjectLocally(project.id);
+    if (savedId) {
+      toast.success(`Project "${project.name}" saved locally to browser storage!`);
+    } else {
+      toast.error("Unable to save project locally");
+    }
   };
 
   const handleSaveVersion = () => {
     saveVersion();
-    updateActiveProject({ savedAt: new Date().toISOString() });
-    toast.success("Project version snapshot saved!");
+    updateActiveProject({ savedAt: new Date().toISOString() }, project.id);
+    saveProjectLocally(project.id);
+    toast.success("Project version snapshot saved locally!");
   };
 
   const materialCost = totalCost(project.items);
@@ -284,6 +304,11 @@ export function ProjectModularWorkspace() {
                     Updated{" "}
                     {project.savedAt ? new Date(project.savedAt).toLocaleDateString() : "Today"}
                   </span>
+                  <span>•</span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[#ecffe0] dark:bg-zinc-900 border border-[#00f0a0]/40 px-2 py-0.5 text-[10px] font-semibold text-black dark:text-[#00f0a0]">
+                    <CheckCircle2 size={11} className="text-[#00a86b] dark:text-[#00f0a0]" /> Saved
+                    Locally
+                  </span>
                 </div>
               </div>
             )}
@@ -311,11 +336,20 @@ export function ProjectModularWorkspace() {
 
             <button
               type="button"
+              onClick={handleSaveProjectLocally}
+              className="btn-pill-mint !py-2 !px-4 !text-xs cursor-pointer shadow-sm"
+              title="Save all changes to browser localStorage"
+            >
+              <Save size={13} /> Save Locally
+            </button>
+
+            <button
+              type="button"
               onClick={handleSaveVersion}
               className="btn-pill-black !py-2 !px-4 !text-xs cursor-pointer"
               title="Save project snapshot and record version"
             >
-              <Save size={13} /> Save Snapshot
+              <History size={13} /> Save Snapshot
             </button>
 
             <Link to="/" className="btn-pill-white !py-2 !px-4 !text-xs">
@@ -447,7 +481,6 @@ function ModulePlanDrawings({
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [pendingExtraction, setPendingExtraction] = useState<ExtractionResult | null>(null);
-  const [showAIKeyModal, setShowAIKeyModal] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const updatePendingRoom = (roomId: string, changes: Partial<Room>) => {
@@ -488,38 +521,29 @@ function ModulePlanDrawings({
   };
 
   const runExtraction = async (dataUrl: string, fileName: string) => {
-    const config = getEffectiveAIConfig();
-    if (!config || !config.apiKey || config.apiKey.trim().length <= 5) {
-      toast.error(
-        "AI Vision API Key Required: Configure your free Google Gemini or OpenAI key to extract exact dimensions from this blueprint.",
-      );
-      setShowAIKeyModal(true);
-      return;
-    }
-
     setIsAnalyzing(true);
-    toast.loading("Analyzing blueprint with AI Vision (Advanced Civil & Dimension OCR)...", {
+    toast.loading("Scanning drawing for room labels and dimensions (In-Browser OCR)...", {
       id: "vision-extract",
     });
     try {
       const result = await analyzePlanImage(dataUrl, fileName);
       setPendingExtraction(result);
-      toast.success(
-        `Civil analysis complete: ${result.rooms.length} spaces extracted with exact dimensions!`,
-        { id: "vision-extract" },
-      );
-    } catch (err) {
-      if (err instanceof NoVisionKeyError) {
-        toast.error(err.message, { id: "vision-extract" });
-        setShowAIKeyModal(true);
+      if (result.rooms.length > 0) {
+        toast.success(
+          `OCR complete: ${result.rooms.length} spaces extracted with exact dimensions!`,
+          { id: "vision-extract" },
+        );
       } else {
-        toast.error(
-          "Extraction error: " + (err instanceof Error ? err.message : "Analysis failed"),
-          {
-            id: "vision-extract",
-          },
+        toast.info(
+          "Drawing scanned. No dimension callouts detected in text. You can add room sizes manually below.",
+          { id: "vision-extract" },
         );
       }
+    } catch (err) {
+      toast.error(
+        "Scanning error: " + (err instanceof Error ? err.message : "OCR analysis failed"),
+        { id: "vision-extract" },
+      );
     } finally {
       setIsAnalyzing(false);
     }
@@ -565,18 +589,10 @@ function ModulePlanDrawings({
             Architectural Plan & Blueprint Analysis
           </h2>
           <p className="text-xs text-[#86909c] mt-0.5">
-            Multimodal AI vision extracts rooms, exact width × length dimensions, and openings
-            directly from your drawing.
+            In-browser OCR detects room tags, dimensions, and wall boundaries directly within your device.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => setShowAIKeyModal(true)}
-            className="btn-pill-white !py-2 !px-4 !text-xs cursor-pointer"
-          >
-            <Key size={13} className="text-[#00f0a0]" /> AI Vision Key
-          </button>
           <button
             onClick={() => fileRef.current?.click()}
             disabled={isAnalyzing}
@@ -584,11 +600,11 @@ function ModulePlanDrawings({
           >
             {isAnalyzing ? (
               <>
-                <Loader2 size={13} className="animate-spin text-[#00f0a0]" /> Analyzing...
+                <Loader2 size={13} className="animate-spin text-[#00f0a0]" /> Scanning Drawing...
               </>
             ) : (
               <>
-                <UploadCloud size={14} /> Upload Plan Drawing
+                <UploadCloud size={14} /> Scan Plan Drawing (OCR)
               </>
             )}
           </button>
@@ -619,14 +635,12 @@ function ModulePlanDrawings({
               <div className="flex flex-wrap items-center gap-2 text-xs font-bold font-display text-black dark:text-white">
                 <Sparkles size={16} className="text-[#00a86b] dark:text-[#00f0a0]" />
                 <span className="text-sm font-bold">
-                  Advanced Civil & Architectural Extraction Complete
+                  Civil & Architectural OCR Extraction Complete
                 </span>
                 <span className="rounded-full bg-black text-[#00f0a0] px-2.5 py-0.5 text-[10px] font-semibold uppercase font-mono">
-                  {pendingExtraction.source === "gemini-ai"
-                    ? "Gemini Vision"
-                    : pendingExtraction.source === "openai-ai"
-                      ? "GPT-4o Vision"
-                      : "Verified"}
+                  {pendingExtraction.source === "tesseract-ocr"
+                    ? "In-Browser OCR"
+                    : "Architectural OCR"}
                 </span>
                 <span className="rounded-full bg-white dark:bg-zinc-800 border border-black/10 px-2.5 py-0.5 text-[10px] font-mono text-black dark:text-white">
                   Confidence: {pendingExtraction.confidence}
@@ -819,9 +833,9 @@ function ModulePlanDrawings({
               <button
                 onClick={() => runExtraction(state.file!.previewDataUrl!, state.file!.name)}
                 disabled={isAnalyzing}
-                className="text-primary hover:underline font-semibold flex items-center gap-1"
+                className="text-primary hover:underline font-semibold flex items-center gap-1 cursor-pointer"
               >
-                <Sparkles size={12} /> Re-analyze with AI
+                <RefreshCw size={12} className={isAnalyzing ? "animate-spin" : ""} /> Scan Drawing (OCR)
               </button>
             )}
             {state.file && (
@@ -924,8 +938,6 @@ function ModulePlanDrawings({
         </div>
       </div>
 
-      {/* AI Vision Setup Modal */}
-      <AIVisionModal isOpen={showAIKeyModal} onClose={() => setShowAIKeyModal(false)} />
     </div>
   );
 }
@@ -1814,82 +1826,232 @@ function ModuleReportsVersions({ onSaveVersion }: { onSaveVersion: () => void })
   const project = useActiveProject();
   if (!project) return null;
 
+  const paState = usePlanAnalysisStore(project.id);
+
+  // Derive unified BOQ items (either project saved items or plan-derived BOQ items)
+  const reportItems: ProjectItem[] =
+    project.items.length > 0
+      ? project.items
+      : paState.boqItems.map((b) => ({
+          slug: b.id,
+          label: b.label,
+          quantity: `${b.quantity} ${b.unit}`,
+          rate: b.rate,
+          cost: Math.round((Number.isFinite(b.quantity) ? b.quantity : 0) * (b.rate || 0)),
+          unit: b.unit,
+        }));
+
+  const carpetSqFt = paState.rooms.reduce((s, r) => s + r.areaSqFt, 0);
+  const builtUpSqFt = carpetSqFt > 0 ? Math.round(carpetSqFt * 1.2) : 0;
+  const materialCost = reportItems.reduce((s, i) => s + (i.cost || 0), 0);
+  const labourCost = Math.round(materialCost * 0.4);
+  const contingency = Math.round((materialCost + labourCost) * 0.05);
+  const grandTotalCost = materialCost + labourCost + contingency;
+  const costPerSqFt = builtUpSqFt > 0 ? Math.round(grandTotalCost / builtUpSqFt) : 0;
+
+  // Primary Material Takeoffs
+  const cementConstituent = paState.constituents.find((c) => c.label.includes("Cement"));
+  const steelConstituent = paState.constituents.find((c) => c.label.includes("Steel"));
+  const sandConstituent = paState.constituents.find((c) => c.label.includes("Sand"));
+  const aggregateConstituent = paState.constituents.find((c) => c.label.includes("Aggregate"));
+  const bricksConstituent = paState.constituents.find((c) => c.label.includes("Bricks"));
+
   const downloadPdf = async () => {
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF({ unit: "pt", format: "a4" });
-    const left = 50;
-    const right = 545;
-    const rupees = (n: number) => inr(n).replace("₹", "Rs. ");
-    let y = 60;
+    const left = 45;
+    const right = 550;
+    const pageWidth = right - left;
+    const formatRupee = (n: number) => `Rs. ${(n || 0).toLocaleString("en-IN")}`;
+    let y = 45;
 
-    doc.setFillColor(20, 50, 120);
-    doc.rect(0, 0, 595, 90, "F");
+    // Header Background Band
+    doc.setFillColor(17, 24, 39);
+    doc.rect(0, 0, 595, 80, "F");
+
+    // Title
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(22);
-    doc.text("BUILDWISE CONSTRUCTION REPORT", left, 45);
+    doc.setFontSize(16);
+    doc.text("EXECUTIVE QUANTITY SURVEY & COST ESTIMATE", left, 36);
+
+    // Subtitle & Project Meta
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
-    doc.text(`Project: ${project.name} • Location: ${project.location || "Site"}`, left, 68);
-
-    doc.setTextColor(30, 30, 30);
-    y = 120;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
-    doc.text("Itemized Bill of Quantities", left, y);
-
-    y += 18;
-    doc.setFillColor(235, 242, 255);
-    doc.rect(left, y - 12, right - left, 22, "F");
     doc.setFontSize(9);
-    doc.setTextColor(50, 70, 100);
-    doc.text("ITEM", left + 8, y + 2);
-    doc.text("QTY", 280, y + 2);
-    doc.text("RATE", 370, y + 2);
-    doc.text("AMOUNT", right - 8, y + 2, { align: "right" });
+    doc.setTextColor(156, 163, 175);
+    const dateStr = new Date().toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+    doc.text(
+      `Project: ${project.name}   |   Client: ${project.clientName || "Private Client"}   |   Site: ${project.location || "Site Location"}   |   Date: ${dateStr}`,
+      left,
+      56,
+    );
+    doc.text("Standard: IS 1200 / CPWD Method of Measurement of Building Works", left, 69);
+
+    y = 105;
+
+    // ─── 1. Scope & Physical Dimensions Box ───
+    doc.setFillColor(243, 244, 246);
+    doc.roundedRect(left, y, pageWidth, 42, 4, 4, "F");
+
+    doc.setFontSize(8);
+    doc.setTextColor(75, 85, 99);
+    doc.setFont("helvetica", "bold");
+    doc.text("CARPET AREA", left + 14, y + 16);
+    doc.text("BUILT-UP PLINTH", left + 130, y + 16);
+    doc.text("SPACES / ROOMS", left + 260, y + 16);
+    doc.text("COST / SQ.FT", left + 390, y + 16);
+
+    doc.setFontSize(11);
+    doc.setTextColor(17, 24, 39);
+    doc.text(`${carpetSqFt.toLocaleString("en-IN")} sq.ft`, left + 14, y + 32);
+    doc.text(`${builtUpSqFt.toLocaleString("en-IN")} sq.ft`, left + 130, y + 32);
+    doc.text(`${paState.rooms.length} spaces`, left + 260, y + 32);
+    doc.text(costPerSqFt > 0 ? `${formatRupee(costPerSqFt)}/sq.ft` : "Calculated", left + 390, y + 32);
+
+    y += 58;
+
+    // ─── 2. Core Constituent Materials Takeoff ───
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(17, 24, 39);
+    doc.text("1. Core Structural Materials Takeoff", left, y);
+
+    y += 12;
+    doc.setFillColor(249, 250, 251);
+    doc.rect(left, y, pageWidth, 28, "F");
+    doc.setDrawColor(229, 231, 235);
+    doc.rect(left, y, pageWidth, 28, "S");
+
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(55, 65, 81);
+    const cementText = `Cement: ${cementConstituent?.quantity || 0} Bags`;
+    const steelText = `Steel: ${steelConstituent?.quantity || 0} kg (${((steelConstituent?.quantity || 0) / 1000).toFixed(2)} MT)`;
+    const sandText = `Sand: ${sandConstituent?.quantity || 0} cft`;
+    const aggText = `Aggregate: ${aggregateConstituent?.quantity || 0} cft`;
+    const bricksText = `Bricks: ${(bricksConstituent?.quantity || 0).toLocaleString("en-IN")} pcs`;
+
+    doc.text(cementText, left + 10, y + 17);
+    doc.text(steelText, left + 110, y + 17);
+    doc.text(sandText, left + 225, y + 17);
+    doc.text(aggText, left + 320, y + 17);
+    doc.text(bricksText, left + 420, y + 17);
+
+    y += 42;
+
+    // ─── 3. Itemized Bill of Quantities Table ───
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(17, 24, 39);
+    doc.text("2. Itemized Bill of Quantities (IS 1200)", left, y);
+
+    y += 12;
+    doc.setFillColor(243, 244, 246);
+    doc.rect(left, y, pageWidth, 18, "F");
+
+    doc.setFontSize(8);
+    doc.setTextColor(75, 85, 99);
+    doc.text("ITEM / TRADE SPECIFICATION", left + 8, y + 12);
+    doc.text("QUANTITY", 300, y + 12);
+    doc.text("RATE (INR)", 395, y + 12);
+    doc.text("AMOUNT (INR)", right - 8, y + 12, { align: "right" });
 
     y += 18;
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(30, 30, 30);
+    doc.setFontSize(8.5);
 
-    project.items.forEach((item, idx) => {
-      if (idx % 2 === 1) {
-        doc.setFillColor(248, 250, 253);
-        doc.rect(left, y - 12, right - left, 20, "F");
+    reportItems.forEach((item, idx) => {
+      if (y > 720) {
+        doc.addPage();
+        y = 50;
       }
-      doc.text(item.label, left + 8, y + 2);
-      doc.text(item.quantity, 280, y + 2);
-      doc.text(rupees(item.rate || 0), 370, y + 2);
-      doc.text(rupees(item.cost), right - 8, y + 2, { align: "right" });
-      y += 20;
+      if (idx % 2 === 1) {
+        doc.setFillColor(249, 250, 251);
+        doc.rect(left, y, pageWidth, 16, "F");
+      }
+      doc.setTextColor(17, 24, 39);
+      doc.text(item.label.substring(0, 48), left + 8, y + 11);
+      doc.text(String(item.quantity), 300, y + 11);
+      doc.text(formatRupee(item.rate || 0), 395, y + 11);
+      doc.text(formatRupee(item.cost), right - 8, y + 11, { align: "right" });
+      y += 16;
     });
 
-    y += 10;
-    doc.setFillColor(20, 50, 120);
-    doc.rect(left, y, right - left, 32, "F");
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text("Total Material Cost:", left + 10, y + 20);
-    doc.text(rupees(totalCost(project.items)), right - 10, y + 20, { align: "right" });
+    y += 12;
 
-    doc.save(`${project.name.replace(/[^\w\- ]+/g, "")}-Estimate.pdf`);
-    toast.success("PDF report downloaded successfully!");
+    // ─── 4. Financial Summary Breakdown Box ───
+    if (y > 670) {
+      doc.addPage();
+      y = 50;
+    }
+
+    doc.setFillColor(249, 250, 251);
+    doc.roundedRect(left, y, pageWidth, 84, 4, 4, "F");
+    doc.setDrawColor(209, 213, 219);
+    doc.roundedRect(left, y, pageWidth, 84, 4, 4, "S");
+
+    doc.setFontSize(8.5);
+    doc.setTextColor(75, 85, 99);
+    doc.text("Civil & Finishes Materials Subtotal:", left + 14, y + 18);
+    doc.text(formatRupee(materialCost), right - 14, y + 18, { align: "right" });
+
+    doc.text("Labor, Shuttering & Masonry Execution (~40%):", left + 14, y + 34);
+    doc.text(formatRupee(labourCost), right - 14, y + 34, { align: "right" });
+
+    doc.text("Site Contingency, Freight & Wastage Allowance (5%):", left + 14, y + 50);
+    doc.text(formatRupee(contingency), right - 14, y + 50, { align: "right" });
+
+    doc.setDrawColor(229, 231, 235);
+    doc.line(left + 14, y + 58, right - 14, y + 58);
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(17, 24, 39);
+    doc.text("GRAND TOTAL ESTIMATED COST:", left + 14, y + 74);
+    doc.text(formatRupee(grandTotalCost), right - 14, y + 74, { align: "right" });
+
+    y += 98;
+
+    // ─── 5. Legal & Technical Compliance Disclaimer ───
+    if (y > 750) {
+      doc.addPage();
+      y = 50;
+    }
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(107, 114, 128);
+    const disclaimer =
+      "Estimation & Compliance Disclaimer: This preliminary Bill of Quantities and financial estimate is compiled pursuant to IS 1200 measurement standards for building works. Quantities are computed from drawing dimensions and current benchmark material rates. Final construction expenditure remains subject to structural RCC engineering drawings, geotechnical soil bearing capacity reports, and local vendor material pricing at the time of procurement. Not a binding fixed-bid civil contract.";
+    doc.text(doc.splitTextToSize(disclaimer, pageWidth), left, y);
+
+    doc.save(`${project.name.replace(/[^\w\- ]+/g, "")}-Executive-Report.pdf`);
+    toast.success("Executive PDF report generated successfully!");
   };
 
   const downloadCsv = () => {
-    const headers = ["Item", "Quantity", "Rate (₹)", "Cost (₹)"];
-    const rows = project.items.map((i) => [`"${i.label}"`, `"${i.quantity}"`, i.rate || 0, i.cost]);
+    const headers = ["Trade / Item Specification", "Quantity", "Rate (INR)", "Amount (INR)"];
+    const rows = reportItems.map((i) => [
+      `"${i.label}"`,
+      `"${i.quantity}"`,
+      i.rate || 0,
+      i.cost,
+    ]);
     const csv =
       "data:text/csv;charset=utf-8," +
       headers.join(",") +
       "\n" +
       rows.map((r) => r.join(",")).join("\n") +
-      `\nTotal Material Cost,,,${totalCost(project.items)}`;
+      `\nCivil Materials Subtotal,,,${materialCost}` +
+      `\nLabor Allowance (40%),,,${labourCost}` +
+      `\nContingency Buffer (5%),,,${contingency}` +
+      `\nGrand Total Estimated Budget,,,${grandTotalCost}`;
     const link = document.createElement("a");
     link.href = encodeURI(csv);
-    link.download = `${project.name.replace(/[^\w\- ]+/g, "")}-BOQ.csv`;
+    link.download = `${project.name.replace(/[^\w\- ]+/g, "")}-BOQ-Schedule.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1898,60 +2060,236 @@ function ModuleReportsVersions({ onSaveVersion }: { onSaveVersion: () => void })
 
   return (
     <div className="space-y-6">
+      {/* ─── Header Controls ─── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold">Reports & Revision Snapshots</h2>
+          <h2 className="text-xl font-bold font-display text-foreground">
+            Executive Report & Revision Snapshots
+          </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Export professional deliverables and preserve version snapshots for this project.
+            Concise, itemized civil deliverables prepared in accordance with IS 1200 quantity takeoff standards.
           </p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={downloadPdf}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm"
+            className="inline-flex items-center gap-1.5 rounded-full bg-black text-white dark:bg-white dark:text-black px-4 py-2 text-xs font-semibold hover:opacity-90 transition-all shadow-sm cursor-pointer"
           >
-            <Download size={14} /> Download PDF Report
+            <Download size={13} /> Download PDF Report
           </button>
           <button
             onClick={downloadCsv}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-secondary transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-secondary transition-colors cursor-pointer"
           >
-            <FileSpreadsheet size={14} /> Export CSV / Excel
+            <FileSpreadsheet size={13} /> Export CSV
           </button>
         </div>
       </div>
 
+      {/* ─── FORMATTED CONCISE EXECUTIVE REPORT PREVIEW CARD ─── */}
+      <div className="rounded-[28px] border border-border bg-card p-6 sm:p-8 shadow-sm space-y-6">
+        {/* Document Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-border">
+          <div>
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-[#ecffe0] dark:bg-zinc-900 border border-[#00f0a0]/40 px-2.5 py-0.5 text-[10px] font-bold text-black dark:text-[#00f0a0] mb-2 font-display uppercase tracking-wider">
+              IS 1200 Civil Deliverable
+            </div>
+            <h3 className="text-2xl font-bold font-display text-foreground">{project.name}</h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              Client: <span className="font-semibold text-foreground">{project.clientName || "Private Client"}</span> • Location: <span className="font-semibold text-foreground">{project.location || "Site Location"}</span>
+            </p>
+          </div>
+          <div className="text-left sm:text-right">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block font-display">
+              Grand Total Budget
+            </span>
+            <span className="text-2xl font-black font-display text-foreground tabular-nums">
+              {inr(grandTotalCost)}
+            </span>
+            {costPerSqFt > 0 && (
+              <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 block font-mono">
+                {inr(costPerSqFt)} / sq.ft built-up
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* 1. Key Scope Metrics */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+          <div className="rounded-2xl bg-secondary/30 border border-border p-3.5">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block font-display">
+              Carpet Area
+            </span>
+            <span className="text-lg font-bold font-display text-foreground tabular-nums block mt-0.5">
+              {carpetSqFt.toLocaleString("en-IN")} sq.ft
+            </span>
+            <span className="text-[10px] text-muted-foreground">Internal room sum</span>
+          </div>
+
+          <div className="rounded-2xl bg-secondary/30 border border-border p-3.5">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block font-display">
+              Built-Up Plinth
+            </span>
+            <span className="text-lg font-bold font-display text-foreground tabular-nums block mt-0.5">
+              {builtUpSqFt.toLocaleString("en-IN")} sq.ft
+            </span>
+            <span className="text-[10px] text-muted-foreground">+20% structural footprint</span>
+          </div>
+
+          <div className="rounded-2xl bg-secondary/30 border border-border p-3.5">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block font-display">
+              Functional Spaces
+            </span>
+            <span className="text-lg font-bold font-display text-foreground tabular-nums block mt-0.5">
+              {paState.rooms.length} Rooms
+            </span>
+            <span className="text-[10px] text-muted-foreground">Architectural schedule</span>
+          </div>
+
+          <div className="rounded-2xl bg-secondary/30 border border-border p-3.5">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block font-display">
+              Wall Perimeter
+            </span>
+            <span className="text-lg font-bold font-display text-foreground tabular-nums block mt-0.5">
+              {paState.walls.reduce((s, w) => s + w.lengthFt, 0)} ft
+            </span>
+            <span className="text-[10px] text-muted-foreground">Masonry envelope & internal</span>
+          </div>
+        </div>
+
+        {/* 2. Core Material Requirements (Zero bloat) */}
+        <div>
+          <h4 className="text-xs font-bold font-display uppercase tracking-wider text-muted-foreground mb-2.5">
+            Core Structural Materials Takeoff
+          </h4>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
+            <div className="rounded-xl border border-border bg-background p-3">
+              <span className="text-[10px] text-muted-foreground block font-medium">Cement</span>
+              <span className="font-bold text-sm text-foreground block mt-0.5">
+                {cementConstituent?.quantity || 0} Bags
+              </span>
+              <span className="text-[10px] text-muted-foreground">PPC / OPC 50kg</span>
+            </div>
+            <div className="rounded-xl border border-border bg-background p-3">
+              <span className="text-[10px] text-muted-foreground block font-medium">TMT Rebar</span>
+              <span className="font-bold text-sm text-foreground block mt-0.5">
+                {steelConstituent?.quantity || 0} kg
+              </span>
+              <span className="text-[10px] text-muted-foreground">
+                {((steelConstituent?.quantity || 0) / 1000).toFixed(2)} Metric Tonnes
+              </span>
+            </div>
+            <div className="rounded-xl border border-border bg-background p-3">
+              <span className="text-[10px] text-muted-foreground block font-medium">River / M-Sand</span>
+              <span className="font-bold text-sm text-foreground block mt-0.5">
+                {sandConstituent?.quantity || 0} cft
+              </span>
+              <span className="text-[10px] text-muted-foreground">Zone II fine aggregate</span>
+            </div>
+            <div className="rounded-xl border border-border bg-background p-3">
+              <span className="text-[10px] text-muted-foreground block font-medium">Coarse Aggregate</span>
+              <span className="font-bold text-sm text-foreground block mt-0.5">
+                {aggregateConstituent?.quantity || 0} cft
+              </span>
+              <span className="text-[10px] text-muted-foreground">20mm / 10mm metal</span>
+            </div>
+            <div className="rounded-xl border border-border bg-background p-3">
+              <span className="text-[10px] text-muted-foreground block font-medium">Modular Bricks</span>
+              <span className="font-bold text-sm text-foreground block mt-0.5">
+                {(bricksConstituent?.quantity || 0).toLocaleString("en-IN")} pcs
+              </span>
+              <span className="text-[10px] text-muted-foreground">IS 2212 Class 1</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Concise BOQ Table */}
+        <div>
+          <h4 className="text-xs font-bold font-display uppercase tracking-wider text-muted-foreground mb-2.5">
+            Itemized Bill of Quantities Summary
+          </h4>
+          <div className="rounded-2xl border border-border overflow-hidden">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-secondary/40 text-muted-foreground font-display uppercase tracking-wider text-[10px]">
+                <tr>
+                  <th className="px-4 py-2.5 font-bold">Trade Specification</th>
+                  <th className="px-4 py-2.5 font-bold">Quantity</th>
+                  <th className="px-4 py-2.5 font-bold">Market Rate (₹)</th>
+                  <th className="px-4 py-2.5 font-bold text-right">Amount (₹)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {reportItems.map((item) => (
+                  <tr key={item.slug} className="hover:bg-secondary/20 transition-colors">
+                    <td className="px-4 py-2.5 font-medium text-foreground">{item.label}</td>
+                    <td className="px-4 py-2.5 font-mono text-muted-foreground">{item.quantity}</td>
+                    <td className="px-4 py-2.5 font-mono text-muted-foreground">{inr(item.rate || 0)}</td>
+                    <td className="px-4 py-2.5 font-mono font-bold text-foreground text-right">
+                      {inr(item.cost)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* 4. Financial Summary Breakdown */}
+        <div className="rounded-2xl bg-secondary/30 border border-border p-4 sm:p-5 space-y-2 text-xs">
+          <div className="flex justify-between text-muted-foreground">
+            <span>Civil & Finishing Materials Subtotal:</span>
+            <span className="font-mono font-semibold text-foreground">{inr(materialCost)}</span>
+          </div>
+          <div className="flex justify-between text-muted-foreground">
+            <span>Labor & Skilled Masonry Execution Allowance (~40%):</span>
+            <span className="font-mono font-semibold text-foreground">{inr(labourCost)}</span>
+          </div>
+          <div className="flex justify-between text-muted-foreground">
+            <span>Site Contingency, Freight & Wastage Allowance (5%):</span>
+            <span className="font-mono font-semibold text-foreground">{inr(contingency)}</span>
+          </div>
+          <div className="pt-2 border-t border-border flex justify-between items-center text-sm font-bold text-foreground">
+            <span className="font-display">Grand Total Estimated Project Budget:</span>
+            <span className="text-base font-black font-display text-foreground">{inr(grandTotalCost)}</span>
+          </div>
+        </div>
+
+        {/* 5. Legal & Technical Disclaimer */}
+        <p className="text-[11px] text-muted-foreground leading-relaxed pt-2 border-t border-border font-light">
+          <strong className="font-semibold text-foreground">Estimation & Compliance Basis:</strong> This preliminary Bill of Quantities and cost report is compiled pursuant to IS 1200 measurement conventions for building works. All quantities are derived from drawing geometry and current benchmark market rates. Final construction expenditure remains subject to structural RCC engineering drawings, geotechnical soil investigations, and local vendor material pricing at the time of procurement. Not a binding fixed-bid civil contract.
+        </p>
+      </div>
+
+      {/* ─── Revision Snapshots Card ─── */}
       <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <History size={18} className="text-primary" />
-            <h3 className="font-bold text-sm">Version History Snapshots</h3>
+            <h3 className="font-bold text-sm font-display">Version History Snapshots</h3>
           </div>
-          {/* ALWAYS ENABLED SAVE BUTTON */}
           <button
             onClick={onSaveVersion}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-1.5 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
           >
-            <Save size={13} /> Save New Version Snapshot
+            <Save size={13} /> Save Snapshot
           </button>
         </div>
 
         {!project.versions || project.versions.length === 0 ? (
           <p className="text-xs text-muted-foreground py-4 text-center">
-            No version snapshots recorded yet. Click "Save New Version Snapshot" to bookmark your
-            current estimate.
+            No version snapshots recorded yet. Click &quot;Save Snapshot&quot; to bookmark your current estimate.
           </p>
         ) : (
           <div className="divide-y divide-border text-xs">
             {project.versions.map((v, idx) => (
               <div key={v.id} className="py-3 flex items-center justify-between">
                 <div>
-                  <span className="font-bold text-foreground">Version {idx + 1}</span>
+                  <span className="font-bold text-foreground font-display">Version {idx + 1}</span>
                   <span className="text-muted-foreground ml-3">
                     {new Date(v.createdAt).toLocaleString()}
                   </span>
                 </div>
-                <div className="font-bold tabular-nums text-primary">{inr(v.totalCost)}</div>
+                <div className="font-bold tabular-nums text-primary font-mono">{inr(v.totalCost)}</div>
               </div>
             ))}
           </div>
