@@ -1,8 +1,10 @@
 import { createWorker } from "tesseract.js";
+import { preprocessPlanImage } from "./image-preprocessor";
 import {
   parseArchitecturalDimension,
   extractDimensionCallout,
   classifyArchitecturalEntity,
+  normalizeDimensionText,
 } from "./dimension-parser";
 import type {
   StructuredFloorPlanData,
@@ -40,8 +42,11 @@ export async function runSpatialOCR(
 }> {
   let worker: Awaited<ReturnType<typeof createWorker>> | null = null;
   try {
+    // 1. Preprocess image: 2x high-resolution upscale and contrast enhancement
+    const enhancedImageUrl = await preprocessPlanImage(imageDataUrl, 2.0);
+
     worker = await createWorker("eng");
-    const result = await worker.recognize(imageDataUrl);
+    const result = await worker.recognize(enhancedImageUrl);
     const rawText = result.data.text || "";
 
     const lines: OCRLineBlock[] = (result.data.lines || []).map((l) => ({
@@ -148,6 +153,22 @@ export async function runSpatialOCR(
 
       // Handle ROOMS
       if (classification.category === "room") {
+        // Compute precise bounding box for the room label using word blocks
+        // This avoids bounding box inflation caused by vertical wall delimiters or pipe symbols
+        let roomBbox = line.bbox;
+        const matchingWords = line.words.filter((w) => {
+          const c = classifyArchitecturalEntity(w.text);
+          return c.category === "room";
+        });
+        if (matchingWords.length > 0) {
+          roomBbox = {
+            x0: Math.min(...matchingWords.map((w) => w.bbox.x0)),
+            y0: Math.min(...matchingWords.map((w) => w.bbox.y0)),
+            x1: Math.max(...matchingWords.map((w) => w.bbox.x1)),
+            y1: Math.max(...matchingWords.map((w) => w.bbox.y1)),
+          };
+        }
+
         // Find if this line itself already contains the dimension
         const selfDim = extractDimensionCallout(line.text);
         let associatedDim: DetectedDimensionCallout | null = null;
@@ -158,20 +179,20 @@ export async function runSpatialOCR(
             associatedDim = {
               text: selfDim,
               parsed: selfParsed,
-              bbox: line.bbox,
+              bbox: roomBbox,
               lineIndex: i,
               used: true,
             };
           }
         }
 
-        // If not in the same line, find the closest dimension callout vertically below or horizontally near
+        // If not in the same line, find the closest dimension callout vertically below
         if (!associatedDim) {
           let bestDistance = Infinity;
           let bestCandidate: DetectedDimensionCallout | null = null;
 
-          const labelCenterX = (line.bbox.x0 + line.bbox.x1) / 2;
-          const labelBottomY = line.bbox.y1;
+          const labelCenterX = (roomBbox.x0 + roomBbox.x1) / 2;
+          const labelBottomY = roomBbox.y1;
 
           for (const cand of detectedDimensions) {
             if (cand.used) continue;
@@ -182,10 +203,10 @@ export async function runSpatialOCR(
             const dx = candCenterX - labelCenterX;
             const dy = candTopY - labelBottomY;
 
-            // In architectural drawings, dimensions are typically 0 to 120px below the room label
-            // or vertically aligned within horizontal tolerance
-            const isBelow = dy >= -10 && dy <= 160;
-            const isHorizontallyAligned = Math.abs(dx) <= 200;
+            // In architectural drawings, dimensions are printed 0 to 90px below the room label
+            // and horizontally aligned within ±110px tolerance
+            const isBelow = dy >= -5 && dy <= 95;
+            const isHorizontallyAligned = Math.abs(dx) <= 120;
 
             if (isBelow && isHorizontallyAligned) {
               const distance = Math.sqrt(dx * dx + dy * dy);
@@ -213,7 +234,7 @@ export async function runSpatialOCR(
           original_text: associatedDim ? associatedDim.text : null,
           confidence: line.confidence,
           verification_status: associatedDim ? "verified" : "unmeasured",
-          bounding_box: toBox(line.bbox),
+          bounding_box: toBox(roomBbox),
           areaSqFt: associatedDim ? associatedDim.parsed.areaSqFt : null,
           areaOriginalUnit: associatedDim ? associatedDim.parsed.areaOriginalUnit : null,
         });

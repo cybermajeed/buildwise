@@ -12,6 +12,8 @@ export interface PipelineOptions {
   fileName?: string;
   mimeType?: string;
   enableVLM?: boolean;
+  apiKey?: string;
+  model?: string;
 }
 
 /**
@@ -53,12 +55,14 @@ export async function executeFloorPlanPipeline(
   let providerUsed: "gemini-vlm" | "spatial-ocr" = "spatial-ocr";
   let vlmError: string | null = null;
 
-  if (enableVLM && vlmProvider.isAvailable()) {
+  if (enableVLM && vlmProvider.isAvailable(options.apiKey)) {
     try {
       vlmData = await vlmProvider.extractFloorPlan(
         base64DataUrl,
         mimeType,
         ocrResult.rawText,
+        options.apiKey,
+        options.model,
       );
       providerUsed = "gemini-vlm";
     } catch (err: any) {
@@ -164,19 +168,26 @@ export async function executeFloorPlanPipeline(
       ];
 
   // Detected unit system
-  const unitsFound = new Set(finalStructured.rooms.map((r) => r.unit).filter(Boolean));
-  const unitSystemDetected =
-    unitsFound.size === 1
-      ? unitsFound.has("meters") || unitsFound.has("millimeters")
-        ? "metric"
-        : "imperial"
-      : unitsFound.size > 1
-        ? "mixed"
-        : "unknown";
+  const detectedUnit =
+    finalStructured.detected_unit ||
+    (finalStructured.rooms.some((r) => r.unit === "meters")
+      ? "meters"
+      : finalStructured.rooms.some((r) => r.unit === "millimeters")
+        ? "millimeters"
+        : finalStructured.rooms.some((r) => r.unit === "feet")
+          ? "feet"
+          : null);
+
+  const unitSystemDetected: "metric" | "imperial" | "mixed" | "unknown" =
+    detectedUnit === "meters" || detectedUnit === "millimeters"
+      ? "metric"
+      : detectedUnit === "feet"
+        ? "imperial"
+        : "metric";
 
   const metadata: ExtractionMetadata = {
     provider: providerUsed,
-    modelUsed: providerUsed === "gemini-vlm" ? (process.env?.GEMINI_MODEL || "gemini-2.5-flash") : "Tesseract.js Wasm",
+    modelUsed: providerUsed === "gemini-vlm" ? (options.model || process.env?.GEMINI_MODEL || "gemini-3.8-flash") : "Tesseract.js Wasm",
     processedAt: new Date().toISOString(),
     unitSystemDetected,
     rawOcrText: ocrResult.rawText,
@@ -184,13 +195,14 @@ export async function executeFloorPlanPipeline(
   };
 
   const measuredCount = mappedRooms.filter((r) => r.widthFt > 0 && r.lengthFt > 0).length;
-  const unmeasuredCount = mappedRooms.length - measuredCount;
+  const verifiedCount = mappedRooms.filter((r) => r.verificationStatus === "verified").length;
+  const estimatedCount = mappedRooms.filter((r) => r.verificationStatus === "estimated").length;
 
   let summary = "";
   if (providerUsed === "gemini-vlm") {
-    summary = `Gemini Multimodal VLM extracted ${mappedRooms.length} spaces (${measuredCount} verified with exact dimensions, ${unmeasuredCount} unmeasured). Total carpet: ${totalCarpet} sq.ft.`;
+    summary = `Gemini Multimodal VLM extracted ${mappedRooms.length} spaces (${verifiedCount} verified dimensions, ${estimatedCount} deduced from scale, unit: ${detectedUnit || "metric"}). Total carpet: ${totalCarpet} sq.ft.`;
   } else {
-    summary = `Spatial OCR extracted ${mappedRooms.length} spaces (${measuredCount} with explicit dimensions, ${unmeasuredCount} unmeasured). Total carpet: ${totalCarpet} sq.ft.`;
+    summary = `Spatial OCR extracted ${mappedRooms.length} spaces (${verifiedCount} verified dimensions, ${estimatedCount} deduced from scale). Total carpet: ${totalCarpet} sq.ft.`;
   }
 
   return {
@@ -199,6 +211,8 @@ export async function executeFloorPlanPipeline(
     walls,
     openings: mappedOpenings,
     structuredData: finalStructured,
+    detectedUnit,
+    unitSystem: unitSystemDetected,
     metadata,
     summary,
     confidence: validation.overallConfidence,

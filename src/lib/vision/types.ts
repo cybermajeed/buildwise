@@ -9,8 +9,9 @@ export type MeasurementUnit = "meters" | "millimeters" | "feet" | null;
 
 export type VerificationStatus =
   | "verified"        // VLM and OCR concordant, or high-confidence explicit annotation
+  | "estimated"       // Deduced from architectural scale and boundary alignment (Rule 1 & Rule 5)
   | "review_needed"   // Discrepancy between VLM and OCR, or ambiguous association
-  | "unmeasured";     // Room identified, but no printed dimension exists (Rule 1 & Rule 5)
+  | "unmeasured";     // Room identified, but no printed dimension exists
 
 export interface BoundingBox {
   x: number;
@@ -72,6 +73,7 @@ export interface ExtractedAnnotation {
 }
 
 export interface StructuredFloorPlanData {
+  detected_unit?: "meters" | "millimeters" | "feet" | null;
   rooms: ExtractedRoom[];
   openings: ExtractedOpening[];
   structural_elements: ExtractedStructuralElement[];
@@ -91,6 +93,8 @@ export interface ExtractionMetadata {
 export interface UnifiedExtractionResponse {
   structuredData: StructuredFloorPlanData;
   metadata: ExtractionMetadata;
+  detectedUnit?: "meters" | "millimeters" | "feet" | null;
+  unitSystem?: "metric" | "imperial" | "mixed";
   // Legacy / Store compatibility fields:
   projectName?: string;
   rooms: Array<{

@@ -35,6 +35,8 @@ export interface AdvancedAnalysis {
 
 export interface ExtractionResult {
   projectName?: string;
+  detectedUnit?: MeasurementUnit;
+  unitSystem?: "metric" | "imperial" | "mixed";
   rooms: Array<
     Room & {
       originalWidth?: number | null;
@@ -63,12 +65,30 @@ export class NoVisionKeyError extends Error {
 const AI_CONFIG_KEY = "buildwise.ai_vision_config";
 
 export function getStoredAIConfig(): AIConfig {
-  return { provider: "gemini-vlm", apiKey: "server-managed", model: "gemini-2.5-flash" };
+  if (typeof window === "undefined") {
+    return { provider: "gemini-vlm", model: "gemini-3.5-flash" };
+  }
+  try {
+    const raw = window.localStorage.getItem(AI_CONFIG_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Auto-migrate away from deprecated 2.5/1.5 models that return 404 for new users
+      if (
+        parsed.model === "gemini-2.5-flash" ||
+        parsed.model === "gemini-1.5-flash" ||
+        !parsed.model
+      ) {
+        parsed.model = "gemini-3.5-flash";
+      }
+      return parsed;
+    }
+  } catch {}
+  return { provider: "gemini-vlm", model: "gemini-3.5-flash" };
 }
 
-export function saveAIConfig(_config: AIConfig): void {
+export function saveAIConfig(config: AIConfig): void {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(AI_CONFIG_KEY, JSON.stringify({ provider: "gemini-vlm" }));
+  window.localStorage.setItem(AI_CONFIG_KEY, JSON.stringify(config));
 }
 
 export function clearAIConfig(): void {
@@ -77,7 +97,7 @@ export function clearAIConfig(): void {
 }
 
 export function getEffectiveAIConfig(): AIConfig {
-  return { provider: "gemini-vlm", apiKey: "server-managed", model: "gemini-2.5-flash" };
+  return getStoredAIConfig();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -116,19 +136,24 @@ export function extractDimensionSubstring(text: string): string | null {
 // Connection Validator for UI Key Testing
 // ─────────────────────────────────────────────────────────────────────────────
 export async function testVisionConnection(
-  _config?: AIConfig,
+  config?: AIConfig,
 ): Promise<{ success: boolean; message: string }> {
   try {
     const { checkVisionConfigServerFn } = await import("./vision/server-fn");
-    const serverInfo = await checkVisionConfigServerFn();
+    const stored = getStoredAIConfig();
+    const activeKey = config?.apiKey || stored.apiKey;
+    const activeModel = config?.model || stored.model || "gemini-3.5-flash";
+    const serverInfo = await checkVisionConfigServerFn({
+      data: { apiKey: activeKey, model: activeModel },
+    });
     return {
-      success: true,
+      success: serverInfo.liveVerified || serverInfo.vlmConfigured,
       message: serverInfo.message,
     };
-  } catch {
+  } catch (err: any) {
     return {
-      success: true,
-      message: "Spatial 2D OCR & Architectural Dimension Parser operational (Client-Side).",
+      success: false,
+      message: err?.message || "Failed to test Gemini connection.",
     };
   }
 }
@@ -159,13 +184,19 @@ export async function analyzePlanImage(
   base64DataUrl: string,
   fileName = "Floor Plan",
 ): Promise<ExtractionResult> {
-  // 1. Attempt secure server function call (where GEMINI_API_KEY resides)
+  const storedConfig = getStoredAIConfig();
+  const apiKey = storedConfig.apiKey || undefined;
+  const model = storedConfig.model || undefined;
+
+  // 1. Attempt secure server function call (with server env or client-supplied key)
   try {
     const { analyzeFloorPlanServerFn } = await import("./vision/server-fn");
     const result = await analyzeFloorPlanServerFn({
       data: {
         base64DataUrl,
         fileName,
+        apiKey,
+        model,
       },
     });
 
@@ -179,7 +210,9 @@ export async function analyzePlanImage(
     // 2. Client-side fallback with Spatial 2D OCR and enhanced dimension parser
     const clientResult = await executeFloorPlanPipeline(base64DataUrl, {
       fileName,
-      enableVLM: false,
+      apiKey,
+      model,
+      enableVLM: Boolean(apiKey),
     });
 
     return formatExtractionResult(clientResult);
@@ -198,6 +231,8 @@ function formatExtractionResult(res: UnifiedExtractionResponse): ExtractionResul
 
   return {
     projectName: res.projectName,
+    detectedUnit: res.detectedUnit,
+    unitSystem: res.unitSystem,
     rooms: res.rooms.map((r) => ({
       id: r.id,
       name: r.name,

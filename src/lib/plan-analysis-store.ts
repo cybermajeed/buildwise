@@ -20,6 +20,10 @@ export type Room = {
   areaSqFt: number;
   rawDimensionText?: string | undefined;
   roomType?: string | undefined;
+  originalWidth?: number | null | undefined;
+  originalLength?: number | null | undefined;
+  originalUnit?: "meters" | "millimeters" | "feet" | null | undefined;
+  verificationStatus?: "verified" | "estimated" | "unmeasured" | "review_needed" | undefined;
 };
 
 export type Wall = {
@@ -91,6 +95,8 @@ export type PlanAnalysisState = {
   file: PlanFile | null;
   projectName: string;
   floorHeightFt: number;
+  unitSystem: "metric" | "imperial";
+  detectedUnit?: string | null;
   rooms: Room[];
   walls: Wall[];
   openings: Opening[];
@@ -460,6 +466,8 @@ export function createEmptyPlanState(projectId: string, name?: string): PlanAnal
     file: null,
     projectName: name || "Residential Plan Analysis",
     floorHeightFt: 10,
+    unitSystem: "metric",
+    detectedUnit: "meters",
     rooms: [],
     walls: [],
     openings: [],
@@ -488,12 +496,14 @@ export function getResolvedProjectId(explicitProjectId?: string): string {
 
 export function readPlanState(projectId?: string): PlanAnalysisState {
   const resolvedId = getResolvedProjectId(projectId);
-  if (typeof window === "undefined") return createEmptyPlanState(resolvedId);
+  const cachedState = cacheByProject.get(resolvedId);
+  if (typeof window === "undefined") {
+    return cachedState || createEmptyPlanState(resolvedId);
+  }
 
   const key = getStorageKey(resolvedId);
   const raw = window.localStorage.getItem(key);
   const cachedRaw = cacheRawByProject.get(resolvedId);
-  const cachedState = cacheByProject.get(resolvedId);
 
   // Return strictly stable referential snapshot if localStorage content has not changed
   if (cachedState && raw === cachedRaw) {
@@ -947,6 +957,12 @@ export function paSetTakeoffTab(tab: PlanAnalysisState["takeoffTab"], projectId?
   writePlanState(id, { ...current, takeoffTab: tab });
 }
 
+export function paSetUnitSystem(unitSystem: "metric" | "imperial", projectId?: string) {
+  const id = getResolvedProjectId(projectId);
+  const current = readPlanState(id);
+  writePlanState(id, { ...current, unitSystem });
+}
+
 export function paReset(projectId?: string) {
   const id = getResolvedProjectId(projectId);
   const clean = createEmptyPlanState(id);
@@ -959,6 +975,8 @@ export function paApplyExtraction(
     walls?: Wall[];
     openings?: Opening[];
     projectName?: string;
+    unitSystem?: "metric" | "imperial" | "mixed";
+    detectedUnit?: string | null;
   },
   projectId?: string,
 ) {
@@ -968,12 +986,23 @@ export function paApplyExtraction(
   const walls = extraction.walls && extraction.walls.length > 0 ? extraction.walls : current.walls;
   const openings =
     extraction.openings && extraction.openings.length > 0 ? extraction.openings : current.openings;
+
+  const unitSystem: "metric" | "imperial" =
+    extraction.unitSystem === "imperial"
+      ? "imperial"
+      : "metric";
+
   const { quantities, constituents } = deriveQuantities(rooms, walls, openings, current.keyParams);
   writePlanState(id, {
     ...current,
     rooms,
     walls,
     openings,
+    unitSystem,
+    detectedUnit:
+      extraction.detectedUnit ||
+      current.detectedUnit ||
+      (unitSystem === "metric" ? "meters" : "feet"),
     projectName: current.projectName || extraction.projectName || "Floor Plan",
     quantities,
     constituents,

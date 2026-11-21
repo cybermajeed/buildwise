@@ -81,6 +81,7 @@ import {
   paRecalculate,
   paReset,
   paApplyExtraction,
+  paSetUnitSystem,
   inrPa,
   boqTotal,
   type Room,
@@ -483,6 +484,7 @@ function ModulePlanDrawings({
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [pendingExtraction, setPendingExtraction] = useState<ExtractionResult | null>(null);
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const updatePendingRoom = (roomId: string, changes: Partial<Room>) => {
@@ -622,6 +624,13 @@ function ModulePlanDrawings({
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
           <button
+            onClick={() => setIsAIModalOpen(true)}
+            className="btn-pill-white !py-2 !px-4 !text-xs cursor-pointer flex items-center gap-1.5"
+            title="Configure Google Gemini Vision API Key"
+          >
+            <Sparkles size={13} className="text-[#00a86b] dark:text-[#00f0a0]" /> AI Vision Key
+          </button>
+          <button
             onClick={() => fileRef.current?.click()}
             disabled={isAnalyzing}
             className="btn-pill-black !py-2 !px-5 !text-xs cursor-pointer disabled:opacity-60"
@@ -673,6 +682,15 @@ function ModulePlanDrawings({
                 <span className="rounded-full bg-white dark:bg-zinc-800 border border-black/10 px-2.5 py-0.5 text-[10px] font-mono text-black dark:text-white">
                   Confidence: {pendingExtraction.confidence}
                 </span>
+                {pendingExtraction.source !== "gemini-vlm" && (
+                  <button
+                    type="button"
+                    onClick={() => setIsAIModalOpen(true)}
+                    className="rounded-full bg-amber-100 dark:bg-amber-950/60 border border-amber-500/30 text-amber-900 dark:text-amber-200 px-2.5 py-0.5 text-[10px] font-semibold hover:underline cursor-pointer flex items-center gap-1"
+                  >
+                    ⚡ Connect Gemini Vision Key
+                  </button>
+                )}
               </div>
               <p className="text-xs text-[#86909c] mt-1 font-medium">{pendingExtraction.summary}</p>
             </div>
@@ -885,10 +903,38 @@ function ModulePlanDrawings({
 
         {/* Quick Room Dimension Editor below plan */}
         <div className="border-t border-border pt-4">
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Spaces & Room Dimensions ({state.rooms.length} Spaces)
-            </h4>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Spaces & Room Dimensions ({state.rooms.length} Spaces)
+              </h4>
+              <div className="inline-flex items-center rounded-full border border-border bg-secondary/50 p-0.5 text-[10px] font-semibold">
+                <button
+                  type="button"
+                  onClick={() => paSetUnitSystem("metric", projectId)}
+                  className={`px-2.5 py-0.5 rounded-full transition-all cursor-pointer ${
+                    state.unitSystem !== "imperial"
+                      ? "bg-black text-white dark:bg-white dark:text-black shadow-xs font-bold"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  title="Display in Meters (m / m²)"
+                >
+                  Metric (m / m²)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => paSetUnitSystem("imperial", projectId)}
+                  className={`px-2.5 py-0.5 rounded-full transition-all cursor-pointer ${
+                    state.unitSystem === "imperial"
+                      ? "bg-black text-white dark:bg-white dark:text-black shadow-xs font-bold"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  title="Display in Feet (ft / sq.ft)"
+                >
+                  Imperial (ft / sq.ft)
+                </button>
+              </div>
+            </div>
             <button
               onClick={() => paAddRoom(projectId)}
               className="text-xs text-primary hover:underline font-semibold flex items-center gap-1"
@@ -906,64 +952,131 @@ function ModulePlanDrawings({
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
-              {state.rooms.map((r) => (
-                <div
-                  key={r.id}
-                  onClick={() => setSelectedRoomId(r.id)}
-                  className={`rounded-lg border p-2 text-xs transition-all cursor-pointer ${
-                    selectedRoomId === r.id
-                      ? "border-primary bg-primary/5 ring-1 ring-primary"
-                      : "border-border bg-background hover:bg-secondary/40"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-semibold text-foreground truncate">{r.name}</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        paRemoveRoom(r.id, projectId);
-                      }}
-                      className="text-muted-foreground hover:text-destructive p-0.5"
-                      title="Delete space"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-muted-foreground">
-                    <span className="text-[10px] font-semibold text-muted-foreground">W:</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={r.widthFt}
-                      onChange={(e) =>
-                        paUpdateRoom(r.id, { widthFt: Number(e.target.value) }, projectId)
-                      }
-                      className="w-14 rounded border border-input bg-card px-1 py-0.5 text-center text-xs text-foreground font-mono"
-                      title="Width (ft)"
-                    />
-                    <span className="text-[10px] font-semibold text-muted-foreground">L:</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={r.lengthFt}
-                      onChange={(e) =>
-                        paUpdateRoom(r.id, { lengthFt: Number(e.target.value) }, projectId)
-                      }
-                      className="w-14 rounded border border-input bg-card px-1 py-0.5 text-center text-xs text-foreground font-mono"
-                      title="Length (ft)"
-                    />
-                    <span className="ml-auto font-mono text-[11px] font-bold text-foreground">
-                      {r.areaSqFt} sq.ft
-                    </span>
-                  </div>
-                  {r.rawDimensionText && (
-                    <div className="mt-1 text-[10px] text-muted-foreground font-mono truncate">
-                      Callout:{" "}
-                      <span className="font-semibold text-foreground">{r.rawDimensionText}</span>
+              {state.rooms.map((r) => {
+                const isMetric = state.unitSystem !== "imperial";
+                const metricWidth =
+                  r.originalWidth != null && r.originalUnit === "meters"
+                    ? r.originalWidth
+                    : +(r.widthFt / 3.28084).toFixed(2);
+                const metricLength =
+                  r.originalLength != null && r.originalUnit === "meters"
+                    ? r.originalLength
+                    : +(r.lengthFt / 3.28084).toFixed(2);
+                const metricArea = +(metricWidth * metricLength).toFixed(1);
+
+                return (
+                  <div
+                    key={r.id}
+                    onClick={() => setSelectedRoomId(r.id)}
+                    className={`rounded-lg border p-2 text-xs transition-all cursor-pointer ${
+                      selectedRoomId === r.id
+                        ? "border-primary bg-primary/5 ring-1 ring-primary"
+                        : "border-border bg-background hover:bg-secondary/40"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="font-semibold text-foreground truncate">{r.name}</span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {r.verificationStatus === "verified" ? (
+                          <span className="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-mono text-[9px] font-bold">
+                            Verified
+                          </span>
+                        ) : r.verificationStatus === "estimated" ? (
+                          <span
+                            className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-mono text-[9px] font-bold"
+                            title="Deduced from architectural scale and boundary alignment"
+                          >
+                            Estimated
+                          </span>
+                        ) : null}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            paRemoveRoom(r.id, projectId);
+                          }}
+                          className="text-muted-foreground hover:text-destructive p-0.5"
+                          title="Delete space"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
                     </div>
-                  )}
-                </div>
-              ))}
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <span className="text-[10px] font-semibold text-muted-foreground">W:</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={isMetric ? metricWidth : r.widthFt}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          if (isMetric) {
+                            paUpdateRoom(
+                              r.id,
+                              {
+                                originalWidth: val,
+                                originalUnit: "meters",
+                                widthFt: +(val * 3.28084).toFixed(2),
+                              },
+                              projectId,
+                            );
+                          } else {
+                            paUpdateRoom(
+                              r.id,
+                              {
+                                widthFt: val,
+                                originalWidth: +(val / 3.28084).toFixed(2),
+                              },
+                              projectId,
+                            );
+                          }
+                        }}
+                        className="w-14 rounded border border-input bg-card px-1 py-0.5 text-center text-xs text-foreground font-mono"
+                        title={isMetric ? "Width (meters)" : "Width (feet)"}
+                      />
+                      <span className="text-[10px] font-semibold text-muted-foreground">L:</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={isMetric ? metricLength : r.lengthFt}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          if (isMetric) {
+                            paUpdateRoom(
+                              r.id,
+                              {
+                                originalLength: val,
+                                originalUnit: "meters",
+                                lengthFt: +(val * 3.28084).toFixed(2),
+                              },
+                              projectId,
+                            );
+                          } else {
+                            paUpdateRoom(
+                              r.id,
+                              {
+                                lengthFt: val,
+                                originalLength: +(val / 3.28084).toFixed(2),
+                              },
+                              projectId,
+                            );
+                          }
+                        }}
+                        className="w-14 rounded border border-input bg-card px-1 py-0.5 text-center text-xs text-foreground font-mono"
+                        title={isMetric ? "Length (meters)" : "Length (feet)"}
+                      />
+                      <span className="ml-auto font-mono text-[11px] font-bold text-foreground">
+                        {isMetric ? `${metricArea} m²` : `${r.areaSqFt} sq.ft`}
+                      </span>
+                    </div>
+                    {r.rawDimensionText && (
+                      <div className="mt-1 text-[10px] text-muted-foreground font-mono truncate">
+                        Callout:{" "}
+                        <span className="font-semibold text-foreground">{r.rawDimensionText}</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -987,6 +1100,9 @@ function ModulePlanDrawings({
           );
         }}
       />
+
+      {/* AI Vision Model Configuration Modal */}
+      <AIVisionModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} />
     </div>
   );
 }
@@ -1296,13 +1412,13 @@ function ModuleDimensionsTakeoff({
                 onChange={(e) =>
                   paUpdateKeyParams({ numberOfFloors: Number(e.target.value) }, projectId)
                 }
-                className="mt-1 w-full bg-background border border-input rounded p-1 font-semibold outline-none"
+                className="mt-1 w-full bg-background border border-input rounded p-1 font-semibold outline-none cursor-pointer"
               >
-                {[1, 2, 3, 4].map((v) => (
-                  <option key={v} value={v}>
-                    G + {v - 1} {v === 1 ? "(Single)" : `(${v} Floors)`}
-                  </option>
-                ))}
+                <option value={1}>Ground Floor (Single Story, 1 Floor)</option>
+                <option value={2}>Ground + 1 (G+1, 2 Floors)</option>
+                <option value={3}>Ground + 2 (G+2, 3 Floors)</option>
+                <option value={4}>Ground + 3 (G+3, 4 Floors)</option>
+                <option value={5}>Ground + 4 (G+4, 5 Floors)</option>
               </select>
             </label>
           </div>

@@ -12,11 +12,17 @@ import {
   Cpu,
   ExternalLink,
   ShieldCheck,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { Page } from "@/components/site-chrome";
 import { toast } from "sonner";
 import { useState, useEffect, useRef } from "react";
-import { testVisionConnection } from "@/lib/plan-vision-service";
+import {
+  testVisionConnection,
+  getStoredAIConfig,
+  saveAIConfig,
+} from "@/lib/plan-vision-service";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -92,10 +98,33 @@ function SettingsPage() {
     toast.success("Profile details saved successfully.");
   };
 
+  const [geminiApiKey, setGeminiApiKey] = useState("");
+  const [geminiModel, setGeminiModel] = useState("gemini-3.5-flash");
+  const [showGeminiKey, setShowGeminiKey] = useState(false);
+
+  useEffect(() => {
+    const aiConfig = getStoredAIConfig();
+    setGeminiApiKey(aiConfig.apiKey || "");
+    setGeminiModel(aiConfig.model || "gemini-3.5-flash");
+  }, []);
+
+  const handleSaveGeminiKey = () => {
+    saveAIConfig({
+      provider: "gemini-vlm",
+      apiKey: geminiApiKey.trim() || undefined,
+      model: geminiModel,
+    });
+    toast.success("Gemini API configuration saved successfully.");
+  };
+
   const handleTestKey = async () => {
     setIsTestingKey(true);
     try {
-      const res = await testVisionConnection();
+      const res = await testVisionConnection({
+        provider: "gemini-vlm",
+        apiKey: geminiApiKey.trim() || undefined,
+        model: geminiModel,
+      });
       if (res.success) {
         toast.success(res.message);
       } else {
@@ -444,7 +473,7 @@ function SettingsPage() {
                           Vision Model
                         </span>
                         <span className="font-medium text-foreground">
-                          Gemini 2.5 Flash / 1.5 Flash (Env Configured)
+                          Gemini 3.5 Flash / 3.8 Flash (Env Configured)
                         </span>
                       </div>
                       <div>
@@ -472,15 +501,75 @@ function SettingsPage() {
                     </div>
                   </div>
 
-                  <div className="pt-2 flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={handleTestKey}
-                      disabled={isTestingKey}
-                      className="btn-pill-black !py-2 !px-4 !text-xs cursor-pointer disabled:opacity-50"
-                    >
-                      {isTestingKey ? "Testing..." : "Test Vision & OCR Engine"}
-                    </button>
+                  <div className="max-w-xl space-y-4 pt-2">
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                          <Key size={13} className="text-primary" /> Google Gemini API Key
+                        </label>
+                        <a
+                          href="https://aistudio.google.com/app/apikey"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[11px] text-primary hover:underline font-semibold flex items-center gap-1"
+                        >
+                          Get Free Key <ExternalLink size={10} />
+                        </a>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type={showGeminiKey ? "text" : "password"}
+                          placeholder="AIzaSy... (or configure GEMINI_API_KEY in .env)"
+                          value={geminiApiKey}
+                          onChange={(e) => setGeminiApiKey(e.target.value)}
+                          className="w-full rounded-xl border border-input bg-background px-3.5 py-2.5 text-xs font-mono text-foreground outline-none focus:border-primary pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowGeminiKey(!showGeminiKey)}
+                          className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                        >
+                          {showGeminiKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Stored securely in your local browser and sent to the server function during blueprint analysis.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-foreground block mb-1.5">
+                        Vision Model
+                      </label>
+                      <select
+                        value={geminiModel}
+                        onChange={(e) => setGeminiModel(e.target.value)}
+                        className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs font-semibold text-foreground outline-none focus:border-primary cursor-pointer"
+                      >
+                        <option value="gemini-3.5-flash">Gemini 3.5 Flash (Recommended - Fast & Free Tier)</option>
+                        <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite (Blazing Fast Low Latency)</option>
+                        <option value="gemini-3.8-flash">Gemini 3.8 Flash (Latest Generation)</option>
+                        <option value="gemini-2.5-pro">Gemini 2.5 Pro (Deep Reasoning)</option>
+                      </select>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={handleSaveGeminiKey}
+                        className="btn-pill-black !py-2 !px-4 !text-xs cursor-pointer"
+                      >
+                        Save Configuration
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleTestKey}
+                        disabled={isTestingKey}
+                        className="btn-pill-mint !py-2 !px-4 !text-xs cursor-pointer disabled:opacity-50"
+                      >
+                        {isTestingKey ? "Testing Connection..." : "Test Gemini Connection"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -19,7 +19,7 @@ export interface ParsedDimensionResult {
  */
 export function parseArchitecturalDimension(raw: string): ParsedDimensionResult | null {
   if (!raw || typeof raw !== "string") return null;
-  const clean = raw.trim();
+  const clean = normalizeDimensionText(raw);
 
   // 1. Metric Meters with explicit M: e.g. "3.0M X 3.0M", "3.0m x 2.0m", "3.0M X 2.3M", "3.5m × 4.2m"
   const metricWithM =
@@ -144,29 +144,44 @@ export function parseArchitecturalDimension(raw: string): ParsedDimensionResult 
 }
 
 /**
+ * Normalizes dimension string to recover missing decimal points and clean delimiters.
+ */
+export function normalizeDimensionText(raw: string): string {
+  if (!raw || typeof raw !== "string") return "";
+  let s = raw.replace(/[|=_—[\]]+/g, " ");
+  // Normalize "X-", "X_", "X /"
+  s = s.replace(/[xX*×by/]\s*[-_]\s*/g, " X ");
+  // Normalize missing decimal points in metric notations: e.g. "30M" -> "3.0M", "23M" -> "2.3M", "20M" -> "2.0M"
+  s = s.replace(/\b([1-9])([0-9])\s*M\b/gi, (_m, d1, d2) => `${d1}.${d2}M`);
+  return s.trim();
+}
+
+/**
  * Extracts a dimension substring from noisy OCR lines without false positives.
  */
 export function extractDimensionCallout(text: string): string | null {
   if (!text || typeof text !== "string") return null;
 
-  // 1. Metric with explicit M: "3.0M X 3.0M", "3.0m x 2.0m", "3.0M X 2.3M"
-  const m1 = text.match(
+  const normalized = normalizeDimensionText(text);
+
+  // 1. Metric with explicit M: "3.0M X 3.0M", "3.0m x 2.0m", "3.0M X 2.3M", "3.0M X-3.0M"
+  const m1 = normalized.match(
     /\b\d{1,2}(?:\.\d+)?\s*(?:m|meter|mtrs?)\s*(?:[xX*×by/]|and)\s*\d{1,2}(?:\.\d+)?\s*(?:m|meter|mtrs?)\b/i,
   );
   if (m1) return m1[0].trim();
 
   // 2. Metric decimal: "3.0 X 3.0", "3.0 x 2.3"
-  const m2 = text.match(/\b\d{1,2}\.\d+\s*(?:[xX*×by/]|and)\s*\d{1,2}(?:\.\d+)?\b/i);
+  const m2 = normalized.match(/\b\d{1,2}\.\d+\s*(?:[xX*×by/]|and)\s*\d{1,2}(?:\.\d+)?\b/i);
   if (m2) return m2[0].trim();
-  const m3 = text.match(/\b\d{1,2}\s*(?:[xX*×by/]|and)\s*\d{1,2}\.\d+\b/i);
+  const m3 = normalized.match(/\b\d{1,2}\s*(?:[xX*×by/]|and)\s*\d{1,2}\.\d+\b/i);
   if (m3) return m3[0].trim();
 
   // 3. Millimeters: "3600 x 4200", "3000 x 3000 mm"
-  const mm = text.match(/\b\d{3,5}\s*(?:mm)?\s*(?:[xX*×by/]|and)\s*\d{3,5}\s*(?:mm)?\b/i);
+  const mm = normalized.match(/\b\d{3,5}\s*(?:mm)?\s*(?:[xX*×by/]|and)\s*\d{3,5}\s*(?:mm)?\b/i);
   if (mm) return mm[0].trim();
 
   // 4. Imperial feet and inches: "14'-6\" x 12'-0\"", "14'6\" x 12'0\"", "14' x 12'"
-  const imp = text.match(
+  const imp = normalized.match(
     /\b\d{1,2}\s*(?:['’]|ft)?\s*-?\s*\d{0,2}\s*(?:["”]|in)?\s*(?:[xX*×by/]|and)\s*\d{1,2}\s*(?:['’]|ft)?\s*-?\s*\d{0,2}\s*(?:["”]|in)?(?:\b|$|\s)/i,
   );
   if (imp && imp[0].trim().length > 3) return imp[0].trim();
@@ -176,6 +191,8 @@ export function extractDimensionCallout(text: string): string | null {
 
 /**
  * Classifies an architectural label into room, opening, structural or annotation.
+ * STRICT: Only verified architectural rooms or spaces are ever assigned category: "room".
+ * Never classifies random strings, OCR fragments, or unknown words as rooms.
  */
 export function classifyArchitecturalEntity(rawName: string): {
   category: "room" | "opening" | "structural" | "annotation";
@@ -184,29 +201,38 @@ export function classifyArchitecturalEntity(rawName: string): {
   structuralType?: "Wall" | "Column" | "Beam" | "Staircase" | "Slab";
   normalizedName: string;
 } {
-  const name = rawName.trim();
-  const lower = name.toLowerCase();
+  // Strip pipe delimiters, underlines, brackets and leading/trailing punctuation
+  const cleaned = rawName
+    .replace(/[|=_—[\]#*~`]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const lower = cleaned.toLowerCase();
+
+  // Discard empty or trivial noise strings
+  if (!cleaned || cleaned.length < 2) {
+    return { category: "annotation", normalizedName: rawName.trim() };
+  }
 
   // 1. OPENINGS (Doors, Windows, Ventilators)
   if (/^(?:d\s*\d+|main\s*door|internal\s*door|sliding\s*door|door)\b/i.test(lower)) {
     return {
       category: "opening",
       openingType: "Door",
-      normalizedName: cleanLabel(name),
+      normalizedName: cleanLabel(cleaned),
     };
   }
   if (/^(?:w\s*\d+|window|sliding\s*window|french\s*window)\b/i.test(lower)) {
     return {
       category: "opening",
       openingType: "Window",
-      normalizedName: cleanLabel(name),
+      normalizedName: cleanLabel(cleaned),
     };
   }
   if (/^(?:v\s*\d+|vent(?:ilator)?|exhaust)\b/i.test(lower)) {
     return {
       category: "opening",
       openingType: "Ventilator",
-      normalizedName: cleanLabel(name),
+      normalizedName: cleanLabel(cleaned),
     };
   }
 
@@ -215,66 +241,66 @@ export function classifyArchitecturalEntity(rawName: string): {
     return {
       category: "structural",
       structuralType: "Column",
-      normalizedName: cleanLabel(name),
+      normalizedName: cleanLabel(cleaned),
     };
   }
   if (/\b(?:stair(?:case|s)?|flight|landing)\b/i.test(lower)) {
     return {
       category: "structural",
       structuralType: "Staircase",
-      normalizedName: cleanLabel(name),
+      normalizedName: cleanLabel(cleaned),
     };
   }
   if (/\b(?:beam|plinth\s*beam|lintel|tie\s*beam)\b/i.test(lower)) {
     return {
       category: "structural",
       structuralType: "Beam",
-      normalizedName: cleanLabel(name),
+      normalizedName: cleanLabel(cleaned),
     };
   }
   if (/\b(?:wall|external\s*wall|partition|parapet)\b/i.test(lower)) {
     return {
       category: "structural",
       structuralType: "Wall",
-      normalizedName: cleanLabel(name),
+      normalizedName: cleanLabel(cleaned),
     };
   }
 
-  // 3. ROOMS & FUNCTIONAL SPACES
-  if (/\b(?:master\s*bed(?:room)?|bed\s*room|bed\s*\d+|guest\s*bed(?:room)?)\b/i.test(lower)) {
-    return { category: "room", roomType: "bedroom", normalizedName: cleanLabel(name) };
+  // 3. ROOMS & FUNCTIONAL SPACES (Strict matching with OCR autocorrect)
+  if (/\b(?:master\s*bed(?:room)?|bed\s*room|bedroom|bed\s*\d+|guest\s*bed(?:room)?|bdrm)\b/i.test(lower)) {
+    return { category: "room", roomType: "bedroom", normalizedName: "Bedroom" };
   }
-  if (/\b(?:living(?:\s+room|\s+area|\s+hall)?|drawing(?:\s+room)?|hall|lounge|family\s*room)\b/i.test(lower)) {
-    return { category: "room", roomType: "living", normalizedName: cleanLabel(name) };
+  if (
+    /\b(?:living(?:\s+room|\s+area|\s+hall)?|drawing(?:\s+room)?|hall|lounge|family\s*room|sitting\s*room|ving(?:\s+roo)?|lving)\b/i.test(
+      lower,
+    )
+  ) {
+    return { category: "room", roomType: "living", normalizedName: "Living Room" };
   }
-  if (/\b(?:kitchen|modular\s*kitchen|pantry|dry\s*kitchen|wet\s*kitchen)\b/i.test(lower)) {
-    return { category: "room", roomType: "kitchen", normalizedName: cleanLabel(name) };
+  if (/\b(?:kitchen|modular\s*kitchen|pantry|dry\s*kitchen|wet\s*kitchen|ktchn|kitch)\b/i.test(lower)) {
+    return { category: "room", roomType: "kitchen", normalizedName: "Kitchen" };
   }
-  if (/\b(?:dining(?:\s+room|\s+area|\s+hall)?)\b/i.test(lower)) {
-    return { category: "room", roomType: "dining", normalizedName: cleanLabel(name) };
+  if (/\b(?:dining(?:\s+room|\s+area|\s+hall)?|dinning|dining\s*hall)\b/i.test(lower)) {
+    return { category: "room", roomType: "dining", normalizedName: "Dining" };
   }
-  if (/\b(?:bath(?:room)?|toilet|w\.?c\.?|wash\s*room|powder\s*room|attached\s*toilet)\b/i.test(lower)) {
-    return { category: "room", roomType: "toilet", normalizedName: cleanLabel(name) };
+  if (/\b(?:bath(?:room)?|toilet|w\.?c\.?|wash\s*room|powder\s*room|attached\s*toilet|restroom)\b/i.test(lower)) {
+    return { category: "room", roomType: "toilet", normalizedName: "Bathroom" };
   }
-  if (/\b(?:balcony|terrace|verandah?|sitout|deck)\b/i.test(lower)) {
-    return { category: "room", roomType: "balcony", normalizedName: cleanLabel(name) };
+  if (/\b(?:balcony|terrace|verandah?|sitout|deck|balc)\b/i.test(lower)) {
+    return { category: "room", roomType: "balcony", normalizedName: "Balcony" };
   }
-  if (/\b(?:corridor|passage|foyer|entry|porch|portico|lobby)\b/i.test(lower)) {
-    return { category: "room", roomType: "corridor", normalizedName: cleanLabel(name) };
+  if (/\b(?:porch|portico|foyer|entry|entrance|corridor|passage|lobby)\b/i.test(lower)) {
+    return { category: "room", roomType: "corridor", normalizedName: cleanLabel(cleaned) };
   }
   if (/\b(?:utility|wash\s*area|store(?:room)?|storage|pooja|puja|prayer|study|office|gym)\b/i.test(lower)) {
-    return { category: "room", roomType: "utility", normalizedName: cleanLabel(name) };
+    return { category: "room", roomType: "utility", normalizedName: cleanLabel(cleaned) };
   }
 
-  // Fallback: Check if it looks like an architectural room name
-  if (/^[a-zA-Z\s-]{3,}$/.test(name) && !/schedule|legend|north|scale|revision|drawn|date|client/i.test(lower)) {
-    return { category: "room", roomType: "other", normalizedName: cleanLabel(name) };
-  }
-
-  // 4. ANNOTATION (Notes, scales, drawing titles)
+  // 4. ANNOTATION (Notes, scales, random strings, non-architectural words)
+  // CRITICAL: Any unidentified or non-room text is ALWAYS categorized as annotation, NEVER as a room.
   return {
     category: "annotation",
-    normalizedName: name,
+    normalizedName: cleaned,
   };
 }
 

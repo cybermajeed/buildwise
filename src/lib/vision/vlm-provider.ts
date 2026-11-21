@@ -9,23 +9,27 @@ import type {
 
 export interface IVLMProvider {
   name: string;
-  isAvailable(): boolean;
+  isAvailable(overrideApiKey?: string): boolean;
   extractFloorPlan(
     base64Data: string,
     mimeType: string,
     ocrTextContext?: string,
+    overrideApiKey?: string,
+    overrideModel?: string,
   ): Promise<StructuredFloorPlanData>;
 }
 
 const SYSTEM_PROMPT = `
 You are an expert civil engineer, architectural quantity surveyor, and floor plan analysis system adhering strictly to Indian Standard (IS 1200) conventions.
 
-Your task is to analyze the uploaded architectural floor plan drawing and extract all spaces, rooms, openings, and dimensions with 100% precision.
+Your task is to analyze the uploaded architectural floor plan drawing, automatically detect its unit of measurement, and extract all spaces, rooms, openings, and dimensions.
 
 CRITICAL RULES YOU MUST STRICTLY FOLLOW:
 
-RULE 1: NEVER ESTIMATE DIMENSIONS VISUALLY.
-If a room (e.g. Toilet, Balcony, Bedroom) is visible in the drawing but NO dimension numbers are explicitly printed inside or adjacent to it, you MUST set width: null, length: null, unit: null, and original_text: null. NEVER guess or assume dimensions based on visual proportions.
+RULE 1: PRECISE EXTRACTION AND ARCHITECTURAL SCALE DEDUCTION.
+- AUTOMATICALLY DETECT UNIT: Check if the diagram uses "meters" (e.g. 3.0M X 3.0M), "millimeters" (e.g. 3000 X 3000), or "feet" (e.g. 10'-0" X 10'-0"). Return this in detected_unit.
+- EXPLICIT CALLOUTS: For rooms with explicitly printed dimensions (e.g. BEDROOM 3.0M X 3.0M, KITCHEN 3.0M X 2.0M, DINING 3.0M X 2.3M, LIVING ROOM 3.0M X 3.0M): extract the exact width, length, unit, and original_text. Mark verification_status as "verified".
+- SPACES WITHOUT CALLOUTS (e.g. BATHROOM, PORCH, TOILET): DO NOT leave them at 0 or unmeasured! Deduce their realistic architectural dimensions based on architectural drawing scale and alignment with adjacent measured walls (e.g. Porch width aligns with Living Room 3.0m x depth ~1.2m; Bathroom fits between the two 3.0m bedrooms, approximately 1.5m to 2.0m x 1.2m to 2.0m). Mark verification_status as "estimated", set original_text to null, and use the detected unit.
 
 RULE 2: NEVER CONFUSE UNRELATED MEASUREMENTS.
 - Do NOT interpret door opening dimensions (e.g. D1: 1.0M X 2.1M or 3'0" X 7'0") as room dimensions.
@@ -45,10 +49,10 @@ RULE 4: ASSOCIATE DIMENSIONS CORRECTLY.
 Use spatial layout, room boundary walls, and text proximity. The dimension text printed directly under or inside a room label belongs to that specific room. Never randomly associate dimensions.
 
 RULE 5: HANDLE AMBIGUITY HONESTLY.
-If a dimension text is blurry, truncated, or ambiguous, return null for the dimensions and flag verification_status: "review_needed".
+If a dimension text is blurry, truncated, or ambiguous, flag verification_status: "review_needed".
 
 ARCHITECTURAL CATEGORIES:
-- "rooms": Master Bedroom, Bedroom, Living Room, Dining Room, Kitchen, Toilet, Bathroom, Balcony, Corridor, Utility, Puja.
+- "rooms": Master Bedroom, Bedroom, Living Room, Dining Room, Kitchen, Toilet, Bathroom, Balcony, Porch, Corridor, Utility, Puja.
 - "openings": Main Door, Internal Doors (D1, D2, D3), Windows (W1, W2, W3), Ventilators (V1).
 - "structural_elements": Columns (C1, C2), Staircase, Load-bearing walls.
 - "unclassified_annotations": General notes, title block, drawing revision notes.
@@ -59,6 +63,10 @@ Return your response in pure JSON conforming to the requested schema.
 const RESPONSE_SCHEMA = {
   type: "OBJECT",
   properties: {
+    detected_unit: {
+      type: "STRING",
+      enum: ["meters", "millimeters", "feet"],
+    },
     rooms: {
       type: "ARRAY",
       items: {
@@ -86,7 +94,7 @@ const RESPONSE_SCHEMA = {
           confidence: { type: "NUMBER" },
           verification_status: {
             type: "STRING",
-            enum: ["verified", "review_needed", "unmeasured"],
+            enum: ["verified", "estimated", "review_needed", "unmeasured"],
           },
           bounding_box: {
             type: "OBJECT",
@@ -161,23 +169,26 @@ export class GeminiVLMProvider implements IVLMProvider {
     );
   }
 
-  private getModelName(): string {
+  private getModelName(overrideModel?: string): string {
     return (
+      overrideModel ||
       (typeof process !== "undefined" && process.env?.GEMINI_MODEL) ||
-      "gemini-2.5-flash"
+      "gemini-3.5-flash"
     );
   }
 
-  public isAvailable(): boolean {
-    return Boolean(this.getApiKey());
+  public isAvailable(overrideApiKey?: string): boolean {
+    return Boolean(overrideApiKey || this.getApiKey());
   }
 
   public async extractFloorPlan(
     base64Data: string,
     mimeType: string,
     ocrTextContext?: string,
+    overrideApiKey?: string,
+    overrideModel?: string,
   ): Promise<StructuredFloorPlanData> {
-    const apiKey = this.getApiKey();
+    const apiKey = overrideApiKey || this.getApiKey();
     if (!apiKey) {
       throw new Error(
         "GEMINI_API_KEY or GOOGLE_API_KEY environment variable is not configured on the server.",
@@ -185,7 +196,7 @@ export class GeminiVLMProvider implements IVLMProvider {
     }
 
     const ai = new GoogleGenAI({ apiKey });
-    const model = this.getModelName();
+    const primaryModel = this.getModelName(overrideModel);
 
     // Strip data URL header if present (e.g. "data:image/png;base64,")
     const cleanBase64 = base64Data.replace(/^data:[^;]+;base64,/, "");
@@ -207,81 +218,90 @@ ${
     ? `For cross-referencing, OCR preliminary text detection detected the following raw strings:\n${ocrTextContext.slice(0, 3000)}\n`
     : ""
 }
-Extract all rooms, explicitly printed room dimensions, doors, windows, and structural notes.
-Remember:
-- BEDROOM: 3.0M X 3.0M -> width: 3.0, length: 3.0, unit: "meters"
-- KITCHEN: 3.0M X 2.0M -> width: 3.0, length: 2.0, unit: "meters"
-- DINING: 3.0M X 2.3M -> width: 3.0, length: 2.3, unit: "meters"
-- LIVING: 3.0M X 3.0M -> width: 3.0, length: 3.0, unit: "meters"
-Never invent or estimate dimensions visually. If dimensions are missing, return null.`,
+1. Automatically detect the primary unit of measurement used in the diagram (e.g. 'meters', 'millimeters', or 'feet').
+2. Extract all rooms and spaces:
+   - For rooms with explicitly printed dimensions (e.g. BEDROOM 3.0M X 3.0M, KITCHEN 3.0M X 2.0M, DINING 3.0M X 2.3M, LIVING ROOM 3.0M X 3.0M): extract exact width, length, and mark status as 'verified'.
+   - For architectural spaces without printed text (such as BATHROOM or PORCH): deduce their dimensions using architectural scale and alignment with adjacent walls (e.g. Porch aligns with Living Room width 3.0m; Bathroom fits between the bedrooms), mark status as 'estimated'.
+Never leave rooms unmeasured with 0. Extract doors, windows, and structural notes.`,
           },
         ],
       },
     ];
 
-    // Retry with exponential backoff for rate limits (429) or transient network issues
+    // Priority model chain: primary model first, followed by fast and reliable fallbacks
+    const modelsToAttempt = [
+      primaryModel,
+      ...["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.8-flash"].filter(
+        (m) => m !== primaryModel,
+      ),
+    ];
+
     let lastError: Error | null = null;
-    const maxRetries = 3;
-    const baseDelay = 1500;
 
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      try {
-        const response = await ai.models.generateContent({
-          model,
-          contents,
-          config: {
-            systemInstruction: SYSTEM_PROMPT,
-            responseMimeType: "application/json",
-            responseSchema: RESPONSE_SCHEMA as any,
-            temperature: 0.1, // Minimal temperature for strict factual accuracy
-          },
-        });
+    for (const currentModel of modelsToAttempt) {
+      const maxRetries = 2;
+      const baseDelay = 1500;
 
-        const text = response.text;
-        if (!text) {
-          throw new Error("Empty response received from Gemini Vision Model");
-        }
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          const response = await ai.models.generateContent({
+            model: currentModel,
+            contents,
+            config: {
+              systemInstruction: SYSTEM_PROMPT,
+              responseMimeType: "application/json",
+              responseSchema: RESPONSE_SCHEMA as any,
+              temperature: 0.1, // Minimal temperature for strict factual accuracy
+            },
+          });
 
-        const parsed = JSON.parse(text) as any;
-        return this.normalizeVLMOutput(parsed);
-      } catch (err: any) {
-        lastError = err;
-        const isRateLimit =
-          err?.status === 429 ||
-          err?.message?.includes("RESOURCE_EXHAUSTED") ||
-          err?.message?.includes("rate limit");
-
-        if (attempt < maxRetries && isRateLimit) {
-          const delay = baseDelay * Math.pow(2, attempt);
-          console.warn(`[Gemini VLM] Rate limit hit. Retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})...`);
-          await new Promise((r) => setTimeout(r, delay));
-          continue;
-        }
-
-        // If primary model failed and not a rate limit, attempt fallback model if on gemini-2.5-flash
-        if (attempt === 0 && model === "gemini-2.5-flash") {
-          console.warn(`[Gemini VLM] Primary model ${model} failed, attempting fallback to gemini-1.5-flash...`);
-          try {
-            const fallbackResponse = await ai.models.generateContent({
-              model: "gemini-1.5-flash",
-              contents,
-              config: {
-                systemInstruction: SYSTEM_PROMPT,
-                responseMimeType: "application/json",
-                responseSchema: RESPONSE_SCHEMA as any,
-                temperature: 0.1,
-              },
-            });
-            const fallbackText = fallbackResponse.text;
-            if (fallbackText) {
-              return this.normalizeVLMOutput(JSON.parse(fallbackText));
-            }
-          } catch (fallbackErr) {
-            console.error("[Gemini VLM] Fallback model also failed:", fallbackErr);
+          const text = response.text;
+          if (!text) {
+            throw new Error(`Empty response received from Gemini model ${currentModel}`);
           }
-        }
 
-        break;
+          const parsed = JSON.parse(text) as any;
+          return this.normalizeVLMOutput(parsed);
+        } catch (err: any) {
+          lastError = err;
+          const isRateLimit =
+            err?.status === 429 ||
+            err?.message?.includes("RESOURCE_EXHAUSTED") ||
+            err?.message?.includes("rate limit");
+
+          if (attempt < maxRetries && isRateLimit) {
+            const delay = baseDelay * Math.pow(2, attempt);
+            console.warn(
+              `[Gemini VLM] Rate limit on ${currentModel}. Retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})...`,
+            );
+            await new Promise((r) => setTimeout(r, delay));
+            continue;
+          }
+
+          const isDemandOrUnavailable =
+            err?.status === 503 ||
+            err?.status === 404 ||
+            String(err?.message).includes("503") ||
+            String(err?.message).includes("404") ||
+            String(err?.message).includes("high demand") ||
+            String(err?.message).includes("no longer available") ||
+            String(err?.message).includes("fetch failed");
+
+          if (isDemandOrUnavailable) {
+            console.warn(
+              `[Gemini VLM] Model ${currentModel} returned ${err?.message || err?.status}. Attempting next model in chain...`,
+            );
+            // Break inner retry to advance to next model in modelsToAttempt
+            break;
+          }
+
+          // If another fatal error (e.g. auth failed), stop immediately
+          if (err?.status === 401 || err?.status === 403) {
+            throw err;
+          }
+
+          break;
+        }
       }
     }
 
@@ -305,6 +325,8 @@ Never invent or estimate dimensions visually. If dimensions are missing, return 
         r.width > 0 &&
         r.length > 0;
 
+      const detectedUnit = raw?.detected_unit || r.unit || "meters";
+
       return {
         id: `vlm_r_${idx + 1}`,
         name: r.name || `Space ${idx + 1}`,
@@ -312,7 +334,7 @@ Never invent or estimate dimensions visually. If dimensions are missing, return 
         roomType: r.roomType || "other",
         width: hasDims ? r.width : null,
         length: hasDims ? r.length : null,
-        unit: hasDims ? r.unit || "meters" : null,
+        unit: hasDims ? r.unit || detectedUnit : null,
         original_text: r.original_text || null,
         confidence: typeof r.confidence === "number" ? r.confidence : 0.9,
         verification_status: hasDims
@@ -361,6 +383,7 @@ Never invent or estimate dimensions visually. If dimensions are missing, return 
     );
 
     return {
+      detected_unit: raw?.detected_unit || null,
       rooms,
       openings,
       structural_elements: structuralElements,

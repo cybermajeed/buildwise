@@ -31,6 +31,7 @@ import {
   inr,
   updateActiveProject,
 } from "@/lib/project-store";
+import { paUpdateKeyParams } from "@/lib/plan-analysis-store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -79,6 +80,14 @@ function IndexPage() {
       },
       id,
     );
+    const floors = projectType.includes("G+2")
+      ? 3
+      : projectType.includes("G+1")
+        ? 2
+        : projectType.includes("G+3")
+          ? 4
+          : 1;
+    paUpdateKeyParams({ numberOfFloors: floors }, id);
     toast.success(`Project "${finalName}" created & saved locally!`);
     navigate({ to: "/project", search: { tab: "plan", projectId: id } });
   };
@@ -249,9 +258,10 @@ function IndexPage() {
                     onChange={(e) => setProjectType(e.target.value)}
                     className="w-full rounded-full border border-[#e5e7eb] dark:border-zinc-700 bg-[#f2f4f5] dark:bg-zinc-900 px-5 py-3 text-sm text-black dark:text-white outline-none focus:border-black dark:focus:border-[#00f0a0] focus:bg-white dark:focus:bg-zinc-900 transition-all font-medium cursor-pointer"
                   >
-                    <option value="Residential Villa (G+1)">Residential Villa (G+1)</option>
-                    <option value="Single Story Bungalow">Single Story Bungalow</option>
-                    <option value="Commercial Complex (G+3)">Commercial Complex (G+3)</option>
+                    <option value="Residential Villa (G+1)">Residential Villa (G+1) — Ground + 1</option>
+                    <option value="Residential Villa (G+2)">Residential Villa (G+2) — Ground + 2</option>
+                    <option value="Single Story Bungalow">Single Story Bungalow (Ground)</option>
+                    <option value="Commercial Complex (G+3)">Commercial Complex (G+3) — Ground + 3</option>
                     <option value="Apartment / Multi-Unit">Apartment / Multi-Unit</option>
                     <option value="Interior Fitout & Renovation">
                       Interior Fitout & Renovation
