@@ -37,48 +37,41 @@ export const checkVisionConfigServerFn = createServerFn({ method: "POST" })
 
     if (hasKey && key) {
       try {
-        const { GoogleGenAI } = await import("@google/genai");
-        const ai = new GoogleGenAI({ apiKey: key });
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 4000);
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`,
+          { signal: controller.signal },
+        );
+        clearTimeout(timeout);
 
-        // Try primary model; if experiencing 503 high demand or 404 deprecation, test fast fallbacks
-        const candidateModels = [
-          requestedModel,
-          ...["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.8-flash"].filter(
-            (m) => m !== requestedModel,
-          ),
-        ];
+        if (res.ok) {
+          const data = (await res.json().catch(() => ({}))) as any;
+          const availableModels: string[] = (data?.models || []).map((m: any) =>
+            m.name ? m.name.replace("models/", "") : "",
+          );
+          liveTestOk = true;
+          liveTestError = null;
 
-        for (const candidate of candidateModels) {
-          try {
-            await ai.models.generateContent({
-              model: candidate,
-              contents: "ping",
-              config: { maxOutputTokens: 1 },
-            });
-            liveTestOk = true;
-            activeModel = candidate;
-            liveTestError = null;
-            break;
-          } catch (modelErr: any) {
-            liveTestError = modelErr?.message || "Invalid or unreachable API key";
-            const isDemandOrDeprecated =
-              modelErr?.status === 404 ||
-              modelErr?.status === 503 ||
-              modelErr?.status === 429 ||
-              String(modelErr?.message).includes("503") ||
-              String(modelErr?.message).includes("404") ||
-              String(modelErr?.message).includes("high demand") ||
-              String(modelErr?.message).includes("no longer available") ||
-              String(modelErr?.message).includes("fetch failed");
-
-            if (!isDemandOrDeprecated) {
-              // Authentication error or bad key: do not try further models
-              break;
-            }
+          if (availableModels.includes(requestedModel)) {
+            activeModel = requestedModel;
+          } else if (availableModels.includes("gemini-3.5-flash-lite")) {
+            activeModel = "gemini-3.5-flash-lite";
+          } else if (availableModels.includes("gemini-3.5-flash")) {
+            activeModel = "gemini-3.5-flash";
+          } else if (availableModels.includes("gemini-3.8-flash")) {
+            activeModel = "gemini-3.8-flash";
           }
+        } else {
+          const errData = (await res.json().catch(() => ({}))) as any;
+          liveTestError =
+            errData?.error?.message || `HTTP ${res.status}: Failed to authenticate with Google API`;
         }
       } catch (err: any) {
-        liveTestError = err?.message || "Invalid or unreachable API key";
+        liveTestError =
+          err?.name === "AbortError"
+            ? "API verification timed out after 4 seconds"
+            : err?.message || "Invalid or unreachable API key";
       }
     }
 

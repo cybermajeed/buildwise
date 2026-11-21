@@ -32,11 +32,54 @@ export async function executeFloorPlanPipeline(
   const mimeType = options.mimeType || detectMimeType(base64DataUrl);
   const enableVLM = options.enableVLM !== false;
 
+  const vlmProvider = getVLMProvider();
+  let vlmData: StructuredFloorPlanData | null = null;
+  let providerUsed: "gemini-vlm" | "spatial-ocr" = "spatial-ocr";
+  let vlmError: string | null = null;
+
+  // 1. Primary Analyzer: Gemini Multimodal Vision Model (Ultra-fast direct execution)
+  if (enableVLM && vlmProvider.isAvailable(options.apiKey)) {
+    try {
+      vlmData = await vlmProvider.extractFloorPlan(
+        base64DataUrl,
+        mimeType,
+        undefined,
+        options.apiKey,
+        options.model,
+      );
+      if (vlmData && vlmData.rooms.length > 0) {
+        providerUsed = "gemini-vlm";
+      }
+    } catch (err: any) {
+      console.warn(
+        "[Pipeline] VLM primary extraction failed, falling back to spatial OCR:",
+        err?.message || err,
+      );
+      vlmError = err?.message || "VLM call failed";
+      vlmData = null;
+    }
+  }
+
+  // 2. Spatial OCR: Only execute if VLM was unavailable or did not identify rooms
   let ocrResult: Awaited<ReturnType<typeof runSpatialOCR>>;
-  try {
-    ocrResult = await runSpatialOCR(base64DataUrl);
-  } catch (ocrErr) {
-    console.warn("[Pipeline] OCR text pass error:", ocrErr);
+  if (!vlmData || vlmData.rooms.length === 0) {
+    try {
+      ocrResult = await runSpatialOCR(base64DataUrl);
+    } catch (ocrErr) {
+      console.warn("[Pipeline] Spatial OCR pass error:", ocrErr);
+      ocrResult = {
+        structuredData: {
+          rooms: [],
+          openings: [],
+          structural_elements: [],
+          unclassified_annotations: [],
+        },
+        rawText: "",
+        lineBlocks: [],
+      };
+    }
+  } else {
+    // VLM succeeded directly; bypass heavy Tesseract OCR to deliver instantaneous response
     ocrResult = {
       structuredData: {
         rooms: [],
@@ -47,29 +90,6 @@ export async function executeFloorPlanPipeline(
       rawText: "",
       lineBlocks: [],
     };
-  }
-
-  // 2. Vision-Language Model Analysis (if VLM provider available and enabled)
-  const vlmProvider = getVLMProvider();
-  let vlmData: StructuredFloorPlanData | null = null;
-  let providerUsed: "gemini-vlm" | "spatial-ocr" = "spatial-ocr";
-  let vlmError: string | null = null;
-
-  if (enableVLM && vlmProvider.isAvailable(options.apiKey)) {
-    try {
-      vlmData = await vlmProvider.extractFloorPlan(
-        base64DataUrl,
-        mimeType,
-        ocrResult.rawText,
-        options.apiKey,
-        options.model,
-      );
-      providerUsed = "gemini-vlm";
-    } catch (err: any) {
-      console.warn("[Pipeline] VLM extraction failed, falling back to spatial OCR:", err?.message || err);
-      vlmError = err?.message || "VLM call failed";
-      vlmData = null;
-    }
   }
 
   // 3. Cross-Validation & Consensus

@@ -1,4 +1,3 @@
-import { GoogleGenAI } from "@google/genai";
 import type {
   StructuredFloorPlanData,
   ExtractedRoom,
@@ -57,106 +56,51 @@ ARCHITECTURAL CATEGORIES:
 - "structural_elements": Columns (C1, C2), Staircase, Load-bearing walls.
 - "unclassified_annotations": General notes, title block, drawing revision notes.
 
-Return your response in pure JSON conforming to the requested schema.
+JSON OUTPUT STRUCTURE:
+Return only valid JSON conforming strictly to:
+{
+  "detected_unit": "meters", // "meters" | "feet" | "millimeters"
+  "rooms": [
+    {
+      "name": "BEDROOM 1",
+      "roomType": "bedroom", // "bedroom" | "living" | "kitchen" | "dining" | "toilet" | "balcony" | "corridor" | "utility" | "other"
+      "width": 3.0,
+      "length": 3.0,
+      "unit": "meters",
+      "original_text": "3.0M X 3.0M",
+      "confidence": 0.98,
+      "verification_status": "verified" // "verified" | "estimated" | "review_needed" | "unmeasured"
+    }
+  ],
+  "openings": [
+    {
+      "name": "Main Door",
+      "type": "Door",
+      "width": 1.0,
+      "height": 2.1,
+      "unit": "meters",
+      "original_text": "1.0M X 2.1M",
+      "count": 1,
+      "confidence": 0.95,
+      "verification_status": "verified"
+    }
+  ],
+  "structural_elements": [
+    {
+      "name": "External Wall",
+      "type": "Wall",
+      "dimensionText": "230mm",
+      "confidence": 0.9
+    }
+  ],
+  "unclassified_annotations": [
+    {
+      "text": "NORTH",
+      "confidence": 0.85
+    }
+  ]
+}
 `;
-
-const RESPONSE_SCHEMA = {
-  type: "OBJECT",
-  properties: {
-    detected_unit: {
-      type: "STRING",
-      enum: ["meters", "millimeters", "feet"],
-    },
-    rooms: {
-      type: "ARRAY",
-      items: {
-        type: "OBJECT",
-        properties: {
-          name: { type: "STRING" },
-          roomType: {
-            type: "STRING",
-            enum: [
-              "bedroom",
-              "living",
-              "kitchen",
-              "dining",
-              "toilet",
-              "balcony",
-              "corridor",
-              "utility",
-              "other",
-            ],
-          },
-          width: { type: "NUMBER" },
-          length: { type: "NUMBER" },
-          unit: { type: "STRING", enum: ["meters", "millimeters", "feet"] },
-          original_text: { type: "STRING" },
-          confidence: { type: "NUMBER" },
-          verification_status: {
-            type: "STRING",
-            enum: ["verified", "estimated", "review_needed", "unmeasured"],
-          },
-          bounding_box: {
-            type: "OBJECT",
-            properties: {
-              x: { type: "NUMBER" },
-              y: { type: "NUMBER" },
-              width: { type: "NUMBER" },
-              height: { type: "NUMBER" },
-            },
-          },
-        },
-        required: ["name", "roomType", "confidence", "verification_status"],
-      },
-    },
-    openings: {
-      type: "ARRAY",
-      items: {
-        type: "OBJECT",
-        properties: {
-          name: { type: "STRING" },
-          type: { type: "STRING", enum: ["Door", "Window", "Ventilator", "Opening"] },
-          width: { type: "NUMBER" },
-          height: { type: "NUMBER" },
-          unit: { type: "STRING", enum: ["meters", "millimeters", "feet"] },
-          original_text: { type: "STRING" },
-          count: { type: "NUMBER" },
-          confidence: { type: "NUMBER" },
-          verification_status: {
-            type: "STRING",
-            enum: ["verified", "review_needed", "unmeasured"],
-          },
-        },
-        required: ["name", "type", "confidence", "verification_status"],
-      },
-    },
-    structural_elements: {
-      type: "ARRAY",
-      items: {
-        type: "OBJECT",
-        properties: {
-          name: { type: "STRING" },
-          type: { type: "STRING", enum: ["Wall", "Column", "Beam", "Staircase", "Slab"] },
-          dimensionText: { type: "STRING" },
-          confidence: { type: "NUMBER" },
-        },
-        required: ["name", "type"],
-      },
-    },
-    unclassified_annotations: {
-      type: "ARRAY",
-      items: {
-        type: "OBJECT",
-        properties: {
-          text: { type: "STRING" },
-          confidence: { type: "NUMBER" },
-        },
-        required: ["text"],
-      },
-    },
-  },
-  required: ["rooms", "openings", "structural_elements", "unclassified_annotations"],
-};
 
 export class GeminiVLMProvider implements IVLMProvider {
   public name = "Gemini Vision Language Model";
@@ -173,7 +117,7 @@ export class GeminiVLMProvider implements IVLMProvider {
     return (
       overrideModel ||
       (typeof process !== "undefined" && process.env?.GEMINI_MODEL) ||
-      "gemini-3.5-flash"
+      "gemini-3.5-flash-lite"
     );
   }
 
@@ -195,24 +139,12 @@ export class GeminiVLMProvider implements IVLMProvider {
       );
     }
 
-    const ai = new GoogleGenAI({ apiKey });
     const primaryModel = this.getModelName(overrideModel);
 
     // Strip data URL header if present (e.g. "data:image/png;base64,")
     const cleanBase64 = base64Data.replace(/^data:[^;]+;base64,/, "");
 
-    const contents: any[] = [
-      {
-        role: "user",
-        parts: [
-          {
-            inlineData: {
-              data: cleanBase64,
-              mimeType: mimeType || "image/png",
-            },
-          },
-          {
-            text: `Analyze this architectural floor plan drawing.
+    const promptText = `Analyze this architectural floor plan drawing.
 ${
   ocrTextContext
     ? `For cross-referencing, OCR preliminary text detection detected the following raw strings:\n${ocrTextContext.slice(0, 3000)}\n`
@@ -222,16 +154,12 @@ ${
 2. Extract all rooms and spaces:
    - For rooms with explicitly printed dimensions (e.g. BEDROOM 3.0M X 3.0M, KITCHEN 3.0M X 2.0M, DINING 3.0M X 2.3M, LIVING ROOM 3.0M X 3.0M): extract exact width, length, and mark status as 'verified'.
    - For architectural spaces without printed text (such as BATHROOM or PORCH): deduce their dimensions using architectural scale and alignment with adjacent walls (e.g. Porch aligns with Living Room width 3.0m; Bathroom fits between the bedrooms), mark status as 'estimated'.
-Never leave rooms unmeasured with 0. Extract doors, windows, and structural notes.`,
-          },
-        ],
-      },
-    ];
+Never leave rooms unmeasured with 0. Extract doors, windows, and structural notes. Return ONLY valid JSON adhering to the specified schema.`;
 
-    // Priority model chain: primary model first, followed by fast and reliable fallbacks
+    // Fast priority chain: requested model, then ultra-fast flash-lite, then standard flash
     const modelsToAttempt = [
       primaryModel,
-      ...["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.8-flash"].filter(
+      ...["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-3.8-flash"].filter(
         (m) => m !== primaryModel,
       ),
     ];
@@ -239,69 +167,79 @@ Never leave rooms unmeasured with 0. Extract doors, windows, and structural note
     let lastError: Error | null = null;
 
     for (const currentModel of modelsToAttempt) {
-      const maxRetries = 2;
-      const baseDelay = 1500;
-
-      for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        try {
-          const response = await ai.models.generateContent({
-            model: currentModel,
-            contents,
-            config: {
-              systemInstruction: SYSTEM_PROMPT,
-              responseMimeType: "application/json",
-              responseSchema: RESPONSE_SCHEMA as any,
-              temperature: 0.1, // Minimal temperature for strict factual accuracy
+      try {
+        const payload = {
+          systemInstruction: {
+            parts: [{ text: SYSTEM_PROMPT }],
+          },
+          contents: [
+            {
+              role: "user",
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: mimeType || "image/png",
+                    data: cleanBase64,
+                  },
+                },
+                {
+                  text: promptText,
+                },
+              ],
             },
-          });
+          ],
+          generationConfig: {
+            responseMimeType: "application/json",
+            temperature: 0.1,
+          },
+        };
 
-          const text = response.text;
-          if (!text) {
-            throw new Error(`Empty response received from Gemini model ${currentModel}`);
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${encodeURIComponent(apiKey)}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(15000), // 15s timeout
+          },
+        );
+
+        if (!res.ok) {
+          const errText = await res.text().catch(() => "");
+          console.warn(
+            `[Gemini VLM] Model ${currentModel} returned ${res.status}: ${errText.slice(0, 200)}`,
+          );
+          if (res.status === 401 || res.status === 403) {
+            throw new Error(`Gemini API authorization error: ${res.status}`);
           }
-
-          const parsed = JSON.parse(text) as any;
-          return this.normalizeVLMOutput(parsed);
-        } catch (err: any) {
-          lastError = err;
-          const isRateLimit =
-            err?.status === 429 ||
-            err?.message?.includes("RESOURCE_EXHAUSTED") ||
-            err?.message?.includes("rate limit");
-
-          if (attempt < maxRetries && isRateLimit) {
-            const delay = baseDelay * Math.pow(2, attempt);
-            console.warn(
-              `[Gemini VLM] Rate limit on ${currentModel}. Retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})...`,
-            );
-            await new Promise((r) => setTimeout(r, delay));
-            continue;
-          }
-
-          const isDemandOrUnavailable =
-            err?.status === 503 ||
-            err?.status === 404 ||
-            String(err?.message).includes("503") ||
-            String(err?.message).includes("404") ||
-            String(err?.message).includes("high demand") ||
-            String(err?.message).includes("no longer available") ||
-            String(err?.message).includes("fetch failed");
-
-          if (isDemandOrUnavailable) {
-            console.warn(
-              `[Gemini VLM] Model ${currentModel} returned ${err?.message || err?.status}. Attempting next model in chain...`,
-            );
-            // Break inner retry to advance to next model in modelsToAttempt
-            break;
-          }
-
-          // If another fatal error (e.g. auth failed), stop immediately
-          if (err?.status === 401 || err?.status === 403) {
-            throw err;
-          }
-
-          break;
+          continue;
         }
+
+        const data = (await res.json()) as any;
+        const candidate = data?.candidates?.[0];
+        const rawText = candidate?.content?.parts?.[0]?.text;
+
+        if (!rawText) {
+          throw new Error(`Empty response received from Gemini model ${currentModel}`);
+        }
+
+        let cleaned = rawText.trim();
+        if (cleaned.startsWith("```json")) {
+          cleaned = cleaned.replace(/^```json\s*/i, "").replace(/```\s*$/, "").trim();
+        } else if (cleaned.startsWith("```")) {
+          cleaned = cleaned.replace(/^```\s*/, "").replace(/```\s*$/, "").trim();
+        }
+
+        const parsed = JSON.parse(cleaned);
+        return this.normalizeVLMOutput(parsed);
+      } catch (err: any) {
+        lastError = err;
+        console.warn(
+          `[Gemini VLM] Model ${currentModel} error:`,
+          err?.message || err,
+        );
       }
     }
 

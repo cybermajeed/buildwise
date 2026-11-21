@@ -66,7 +66,7 @@ const AI_CONFIG_KEY = "buildwise.ai_vision_config";
 
 export function getStoredAIConfig(): AIConfig {
   if (typeof window === "undefined") {
-    return { provider: "gemini-vlm", model: "gemini-3.5-flash" };
+    return { provider: "gemini-vlm", model: "gemini-3.5-flash-lite" };
   }
   try {
     const raw = window.localStorage.getItem(AI_CONFIG_KEY);
@@ -78,12 +78,12 @@ export function getStoredAIConfig(): AIConfig {
         parsed.model === "gemini-1.5-flash" ||
         !parsed.model
       ) {
-        parsed.model = "gemini-3.5-flash";
+        parsed.model = "gemini-3.5-flash-lite";
       }
       return parsed;
     }
   } catch {}
-  return { provider: "gemini-vlm", model: "gemini-3.5-flash" };
+  return { provider: "gemini-vlm", model: "gemini-3.5-flash-lite" };
 }
 
 export function saveAIConfig(config: AIConfig): void {
@@ -142,7 +142,7 @@ export async function testVisionConnection(
     const { checkVisionConfigServerFn } = await import("./vision/server-fn");
     const stored = getStoredAIConfig();
     const activeKey = config?.apiKey || stored.apiKey;
-    const activeModel = config?.model || stored.model || "gemini-3.5-flash";
+    const activeModel = config?.model || stored.model || "gemini-3.5-flash-lite";
     const serverInfo = await checkVisionConfigServerFn({
       data: { apiKey: activeKey, model: activeModel },
     });

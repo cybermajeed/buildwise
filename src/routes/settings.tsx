@@ -99,13 +99,13 @@ function SettingsPage() {
   };
 
   const [geminiApiKey, setGeminiApiKey] = useState("");
-  const [geminiModel, setGeminiModel] = useState("gemini-3.5-flash");
+  const [geminiModel, setGeminiModel] = useState("gemini-3.5-flash-lite");
   const [showGeminiKey, setShowGeminiKey] = useState(false);
 
   useEffect(() => {
     const aiConfig = getStoredAIConfig();
     setGeminiApiKey(aiConfig.apiKey || "");
-    setGeminiModel(aiConfig.model || "gemini-3.5-flash");
+    setGeminiModel(aiConfig.model || "gemini-3.5-flash-lite");
   }, []);
 
   const handleSaveGeminiKey = () => {
@@ -546,8 +546,8 @@ function SettingsPage() {
                         onChange={(e) => setGeminiModel(e.target.value)}
                         className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs font-semibold text-foreground outline-none focus:border-primary cursor-pointer"
                       >
-                        <option value="gemini-3.5-flash">Gemini 3.5 Flash (Recommended - Fast & Free Tier)</option>
-                        <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite (Blazing Fast Low Latency)</option>
+                        <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite (Recommended - Ultra Fast ~2s)</option>
+                        <option value="gemini-3.5-flash">Gemini 3.5 Flash (Balanced & High Precision)</option>
                         <option value="gemini-3.8-flash">Gemini 3.8 Flash (Latest Generation)</option>
                         <option value="gemini-2.5-pro">Gemini 2.5 Pro (Deep Reasoning)</option>
                       </select>

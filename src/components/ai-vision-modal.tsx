@@ -26,7 +26,7 @@ interface AIVisionModalProps {
 
 export function AIVisionModal({ isOpen, onClose, onSaved }: AIVisionModalProps) {
   const [apiKey, setApiKey] = useState("");
-  const [model, setModel] = useState("gemini-3.5-flash");
+  const [model, setModel] = useState("gemini-3.5-flash-lite");
   const [showKey, setShowKey] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -35,7 +35,7 @@ export function AIVisionModal({ isOpen, onClose, onSaved }: AIVisionModalProps) 
     if (isOpen) {
       const stored = getStoredAIConfig();
       setApiKey(stored.apiKey || "");
-      setModel(stored.model || "gemini-3.5-flash");
+      setModel(stored.model || "gemini-3.5-flash-lite");
       setTestResult(null);
     }
   }, [isOpen]);
@@ -166,8 +166,8 @@ export function AIVisionModal({ isOpen, onClose, onSaved }: AIVisionModalProps) 
               onChange={(e) => setModel(e.target.value)}
               className="w-full rounded-xl border border-[#e5e7eb] dark:border-zinc-700 bg-[#f2f4f5] dark:bg-zinc-900 px-3 py-2 text-xs font-semibold text-black dark:text-white outline-none focus:border-black dark:focus:border-[#00f0a0] cursor-pointer"
             >
-              <option value="gemini-3.5-flash">Gemini 3.5 Flash (Recommended - Fast & Free Tier)</option>
-              <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite (Blazing Fast Low Latency)</option>
+              <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite (Recommended - Ultra Fast ~2s)</option>
+              <option value="gemini-3.5-flash">Gemini 3.5 Flash (Balanced & High Precision)</option>
               <option value="gemini-3.8-flash">Gemini 3.8 Flash (Latest Generation)</option>
               <option value="gemini-2.5-pro">Gemini 2.5 Pro (Deep Reasoning)</option>
             </select>
