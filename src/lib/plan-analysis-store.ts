@@ -1,5 +1,14 @@
 import { useSyncExternalStore } from "react";
 import { read as readAppStore } from "./project-store";
+import {
+  type WallConfiguration,
+  type WallWastageAppConfig,
+  DEFAULT_WALL_CONFIG,
+  getStoredWallWastageConfig,
+  saveStoredWallWastageConfig,
+  applyMaterialWastage,
+  inchesToMeters,
+} from "./wall-wastage-config";
 
 // ─── Domain Types ─────────────────────────────────────────────────────────────
 
@@ -32,6 +41,9 @@ export type Opening = {
 
 export type KeyParameters = {
   wallThicknessIn: number;
+  internalWallThicknessIn?: number;
+  wastagePct?: number;
+  wallConfig?: WallConfiguration;
   floorHeightFt: number;
   plinthHeightFt: number;
   numberOfFloors: number;
@@ -98,6 +110,9 @@ export const DEFAULT_OPENINGS: Opening[] = [];
 
 export const DEFAULT_KEY_PARAMS: KeyParameters = {
   wallThicknessIn: 9,
+  internalWallThicknessIn: 4.5,
+  wastagePct: 5,
+  wallConfig: DEFAULT_WALL_CONFIG,
   floorHeightFt: 10,
   plinthHeightFt: 2.5,
   numberOfFloors: 1,
@@ -171,9 +186,14 @@ export function deriveQuantities(
   // 5. Reinforced Cement Concrete (RCC M20/M25: 1:1.5:3)
   // a) Footings & Pedestals: avg width 1.5 ft, avg depth 1.0 ft along wall lines
   const footingRccCft = totalWallLengthFt * 1.5 * 1.0;
-  // b) Plinth Beams: cross section = (wallThicknessIn/12) x 1.0 ft height along walls
-  const wallThicknessFt = params.wallThicknessIn / 12;
-  const plinthBeamRccCft = totalWallLengthFt * wallThicknessFt * 1.0;
+  
+  // Wall thicknesses configured
+  const extWallThicknessFt = (params.wallThicknessIn || 9) / 12;
+  const intWallThicknessFt = (params.internalWallThicknessIn || 4.5) / 12;
+  const wastagePct = typeof params.wastagePct === "number" ? params.wastagePct : 5;
+
+  // b) Plinth Beams: cross section along wall lengths with respective thicknesses
+  const plinthBeamRccCft = (extWallLengthFt * extWallThicknessFt + intWallLengthFt * intWallThicknessFt) * 1.0;
   // c) Roof Slab: 5-inch (0.417 ft) thick slab over total floor area
   const slabRccCft = totalCarpetAreaSqFt * (5 / 12);
   // d) Columns, Lintels & Chajjas: approx 15% of slab & beam volume
@@ -183,17 +203,24 @@ export function deriveQuantities(
   const totalRccCum = +(totalRccCft * CFT_TO_CUM).toFixed(1);
 
   // 6. Brickwork / Masonry (Volume in m³)
-  // External walls: 9" thick (0.75 ft)
-  const extBrickCft = netExtWallAreaSqFt * wallThicknessFt;
+  // External walls: thickness = extWallThicknessFt (e.g. 9" = 0.75 ft or custom)
+  const extBrickCft = netExtWallAreaSqFt * extWallThicknessFt;
   const extBrickCum = +(extBrickCft * CFT_TO_CUM).toFixed(1);
 
-  // Internal walls: 4.5" thick partition (0.375 ft)
-  const intBrickCft = netIntWallAreaSqFt * 0.375;
+  // Internal walls: thickness = intWallThicknessFt (e.g. 4.5" = 0.375 ft or custom)
+  const intBrickCft = netIntWallAreaSqFt * intWallThicknessFt;
   const intBrickCum = +(intBrickCft * CFT_TO_CUM).toFixed(1);
 
   const totalBrickCum = +(extBrickCum + intBrickCum).toFixed(1);
   // Standard Indian modular bricks: ~500 bricks per m³ of brickwork (IS 2212)
-  const totalBricksCount = Math.round(totalBrickCum * 500);
+  const baseExtBricks = Math.round(extBrickCum * 500);
+  const baseIntBricks = Math.round(intBrickCum * 500);
+  const baseBricksCount = Math.round(totalBrickCum * 500);
+
+  // Apply material wastage to procured unit counts / quantities
+  const totalExtBricksCount = applyMaterialWastage(baseExtBricks, wastagePct, "ceil");
+  const totalIntBricksCount = applyMaterialWastage(baseIntBricks, wastagePct, "ceil");
+  const totalBricksCount = applyMaterialWastage(baseBricksCount, wastagePct, "ceil");
 
   // 7. Plastering (Cement Mortar in m²)
   // External Plaster (15-20mm waterproof mortar): Outer face of external walls
@@ -201,37 +228,44 @@ export function deriveQuantities(
   // Internal Plaster (12mm mortar): Both faces of internal walls + inner face of external walls + Ceilings
   const intPlasterSqFt = netIntWallAreaSqFt * 2 + netExtWallAreaSqFt + totalCarpetAreaSqFt;
   const totalPlasterSqFt = extPlasterSqFt + intPlasterSqFt;
-  const totalPlasterSqm = +(totalPlasterSqFt * SQFT_TO_SQM).toFixed(1);
+  const basePlasterSqm = +(totalPlasterSqFt * SQFT_TO_SQM).toFixed(1);
+  const totalPlasterSqm = applyMaterialWastage(basePlasterSqm, wastagePct, "decimals");
 
   // 8. Flooring (Tiles / Vitrified in m²)
-  // Floor area plus 5% skirting deduction/addition
-  const flooringSqm = +(totalCarpetAreaSqFt * 1.05 * SQFT_TO_SQM).toFixed(1);
+  // Floor area plus 5% skirting deduction/addition, plus configured material wastage
+  const baseFlooringSqm = +(totalCarpetAreaSqFt * 1.05 * SQFT_TO_SQM).toFixed(1);
+  const flooringSqm = applyMaterialWastage(baseFlooringSqm, wastagePct, "decimals");
 
   // 9. Painting (Primer + Putty + 2 Coats in m²)
   // Internal walls + Ceilings + External walls
-  const totalPaintingSqm = +(totalPlasterSqFt * SQFT_TO_SQM).toFixed(1);
+  const basePaintingSqm = +(totalPlasterSqFt * SQFT_TO_SQM).toFixed(1);
+  const totalPaintingSqm = applyMaterialWastage(basePaintingSqm, wastagePct, "decimals");
 
   // 10. Reinforcement Steel (TMT Fe500 in kg)
   // Standard structural QS design norm: ~95 kg steel per m³ of RCC concrete for residential structures
-  const steelKg = Math.round(totalRccCum * 95);
+  const baseSteelKg = Math.round(totalRccCum * 95);
+  const steelKg = applyMaterialWastage(baseSteelKg, wastagePct, "ceil");
   const steelMT = +(steelKg / 1000).toFixed(2);
 
   // 11. Constituent Material Breakdown (Cement, Sand, Aggregate)
-  // Concrete: 8.2 bags cement/m³, 0.45 m³ sand/m³, 0.85 m³ coarse aggregate/m³
+  // Concrete: 8.0 bags cement/m³, 0.45 m³ sand/m³, 0.85 m³ coarse aggregate/m³
   // Brickwork: 1.4 bags cement/m³, 0.25 m³ sand/m³
   // Plastering: 0.16 bags cement/m², 0.02 m³ sand/m²
   const cementBagsConcrete = (totalRccCum + pccCum) * 8.0;
   const cementBagsBrickwork = totalBrickCum * 1.4;
-  const cementBagsPlaster = totalPlasterSqm * 0.16;
-  const totalCementBags = Math.round(cementBagsConcrete + cementBagsBrickwork + cementBagsPlaster);
+  const cementBagsPlaster = basePlasterSqm * 0.16;
+  const baseCementBags = Math.round(cementBagsConcrete + cementBagsBrickwork + cementBagsPlaster);
+  const totalCementBags = applyMaterialWastage(baseCementBags, wastagePct, "ceil");
 
   const sandCumConcrete = (totalRccCum + pccCum) * 0.45;
   const sandCumBrickwork = totalBrickCum * 0.25;
-  const sandCumPlaster = totalPlasterSqm * 0.02;
-  const totalSandCum = +(sandCumConcrete + sandCumBrickwork + sandCumPlaster).toFixed(1);
+  const sandCumPlaster = basePlasterSqm * 0.02;
+  const baseSandCum = +(sandCumConcrete + sandCumBrickwork + sandCumPlaster).toFixed(1);
+  const totalSandCum = applyMaterialWastage(baseSandCum, wastagePct, "decimals");
   const totalSandCft = Math.round(totalSandCum / CFT_TO_CUM);
 
-  const aggregateCum = +((totalRccCum + pccCum) * 0.85).toFixed(1);
+  const baseAggregateCum = +((totalRccCum + pccCum) * 0.85).toFixed(1);
+  const aggregateCum = applyMaterialWastage(baseAggregateCum, wastagePct, "decimals");
   const aggregateCft = Math.round(aggregateCum / CFT_TO_CUM);
 
   const quantities: QuantityItem[] = [
@@ -264,20 +298,20 @@ export function deriveQuantities(
     },
     {
       id: "brickwork_ext",
-      label: 'External Brick Masonry (9" Wall)',
+      label: `External Brick Masonry (${params.wallThicknessIn || 9}" Wall)`,
       quantity: extBrickCum,
       unit: "m³",
       icon: "🧱",
-      description: `${Math.round(extBrickCum * 500).toLocaleString("en-IN")} standard bricks`,
+      description: `${totalExtBricksCount.toLocaleString("en-IN")} standard bricks (incl. ${wastagePct}% wastage)`,
       secondaryBreakdown: `${Math.round(extBrickCum * 35.315)} cft`,
     },
     {
       id: "brickwork_int",
-      label: 'Internal Brick Masonry (4.5" Partition)',
+      label: `Internal Brick Masonry (${params.internalWallThicknessIn || 4.5}" Partition)`,
       quantity: intBrickCum,
       unit: "m³",
       icon: "🧱",
-      description: `${Math.round(intBrickCum * 500).toLocaleString("en-IN")} standard bricks`,
+      description: `${totalIntBricksCount.toLocaleString("en-IN")} standard bricks (incl. ${wastagePct}% wastage)`,
       secondaryBreakdown: `${Math.round(intBrickCum * 35.315)} cft`,
     },
     {
@@ -286,7 +320,7 @@ export function deriveQuantities(
       quantity: totalPlasterSqm,
       unit: "m²",
       icon: "🪣",
-      description: "Internal wall & ceiling plaster + external waterproof plaster",
+      description: `Internal wall & ceiling plaster + external waterproof plaster (incl. ${wastagePct}% wastage)`,
       secondaryBreakdown: `${Math.round(totalPlasterSqm * 10.764)} sq ft`,
     },
     {
@@ -295,7 +329,7 @@ export function deriveQuantities(
       quantity: flooringSqm,
       unit: "m²",
       icon: "⬜",
-      description: "Carpet area coverage with 5% peripheral skirting allowance",
+      description: `Carpet area coverage with skirting & ${wastagePct}% cutting wastage`,
       secondaryBreakdown: `${Math.round(flooringSqm * 10.764)} sq ft`,
     },
     {
@@ -304,7 +338,7 @@ export function deriveQuantities(
       quantity: totalPaintingSqm,
       unit: "m²",
       icon: "🖌",
-      description: "Primer + 2 coats interior emulsion & exterior weathercoat",
+      description: `Primer + 2 coats interior emulsion & exterior weathercoat (incl. ${wastagePct}% wastage)`,
       secondaryBreakdown: `${Math.round(totalPaintingSqm * 10.764)} sq ft`,
     },
     {
@@ -313,7 +347,7 @@ export function deriveQuantities(
       quantity: steelKg,
       unit: "kg",
       icon: "⚙",
-      description: `${steelMT} Metric Tonnes (calculated @ 95 kg/m³ of RCC)`,
+      description: `${steelMT} Metric Tonnes (incl. ${wastagePct}% cutting/binding wastage)`,
       secondaryBreakdown: `${steelMT} MT`,
     },
     {
@@ -339,31 +373,31 @@ export function deriveQuantities(
       label: "Portland Pozzolana Cement (PPC)",
       quantity: totalCementBags,
       unit: "Bags (50 kg)",
-      basis: "Derived from RCC, PCC, brick mortar & plastering mix designs",
+      basis: `Derived from RCC, PCC, brick mortar & plaster (incl. ${wastagePct}% wastage)`,
     },
     {
       label: "River Sand / M-Sand",
       quantity: totalSandCft,
       unit: "cft",
-      basis: `${totalSandCum} m³ for concrete, masonry jointing and plaster coats`,
+      basis: `${totalSandCum} m³ for concrete, masonry & plaster (incl. ${wastagePct}% wastage)`,
     },
     {
       label: "Coarse Aggregate (20mm / 10mm)",
       quantity: aggregateCft,
       unit: "cft",
-      basis: `${aggregateCum} m³ for RCC foundation, beams, columns & roof slab`,
+      basis: `${aggregateCum} m³ for RCC foundation, beams, slab (incl. ${wastagePct}% wastage)`,
     },
     {
       label: "Total Modular Clay Bricks",
       quantity: totalBricksCount,
       unit: "pieces",
-      basis: `Estimated at 500 standard modular bricks per m³ of finished masonry`,
+      basis: `Estimated at 500 standard modular bricks per m³ of finished masonry (incl. ${wastagePct}% wastage)`,
     },
     {
       label: "TMT Steel Bars (Fe500D)",
       quantity: steelKg,
       unit: "kg",
-      basis: `Standard structural design consumption @ 95 kg per m³ structural concrete`,
+      basis: `Standard structural design consumption @ 95 kg per m³ structural concrete (incl. ${wastagePct}% wastage)`,
     },
   ];
 
@@ -411,6 +445,15 @@ function getStorageKey(projectId: string): string {
 }
 
 export function createEmptyPlanState(projectId: string, name?: string): PlanAnalysisState {
+  const stored = getStoredWallWastageConfig();
+  const keyParams: KeyParameters = {
+    ...DEFAULT_KEY_PARAMS,
+    wallThicknessIn: stored.wall_configuration.external_wall.thickness_inches,
+    internalWallThicknessIn: stored.wall_configuration.internal_wall.thickness_inches,
+    wastagePct: stored.material_configuration.wastage_percentage,
+    wallConfig: stored.wall_configuration,
+  };
+
   return {
     projectId,
     step: 0,
@@ -420,7 +463,7 @@ export function createEmptyPlanState(projectId: string, name?: string): PlanAnal
     rooms: [],
     walls: [],
     openings: [],
-    keyParams: DEFAULT_KEY_PARAMS,
+    keyParams,
     quantities: [],
     boqItems: [],
     constituents: [],
@@ -474,7 +517,10 @@ export function readPlanState(projectId?: string): PlanAnalysisState {
     const rooms = !parsed.file && hasMockRooms ? [] : parsed.rooms || [];
     const walls = !parsed.file && hasMockRooms ? [] : parsed.walls || [];
     const openings = !parsed.file && hasMockRooms ? [] : parsed.openings || [];
-    const keyParams = parsed.keyParams || DEFAULT_KEY_PARAMS;
+    const keyParams: KeyParameters = {
+      ...DEFAULT_KEY_PARAMS,
+      ...(parsed.keyParams || {}),
+    };
     const { quantities, constituents } = deriveQuantities(rooms, walls, openings, keyParams);
 
     const fullState: PlanAnalysisState = {
@@ -806,6 +852,50 @@ export function paUpdateKeyParams(params: Partial<KeyParameters>, projectId?: st
   const id = getResolvedProjectId(projectId);
   const current = readPlanState(id);
   const keyParams = { ...current.keyParams, ...params };
+
+  // If wallConfig, wall thicknesses, or wastage percentage were modified, persist them
+  if (
+    params.wallConfig ||
+    typeof params.wastagePct === "number" ||
+    typeof params.wallThicknessIn === "number" ||
+    typeof params.internalWallThicknessIn === "number"
+  ) {
+    const existing = getStoredWallWastageConfig();
+    const updatedCfg: WallWastageAppConfig = {
+      wall_configuration: params.wallConfig || {
+        external_wall: {
+          type:
+            params.wallThicknessIn && Math.abs(params.wallThicknessIn - 9) > 0.05
+              ? "custom"
+              : existing.wall_configuration.external_wall.type,
+          thickness_inches:
+            params.wallThicknessIn ?? existing.wall_configuration.external_wall.thickness_inches,
+          thickness_meters: inchesToMeters(
+            params.wallThicknessIn ?? existing.wall_configuration.external_wall.thickness_inches,
+          ),
+        },
+        internal_wall: {
+          type:
+            params.internalWallThicknessIn && Math.abs(params.internalWallThicknessIn - 4.5) > 0.05
+              ? "custom"
+              : existing.wall_configuration.internal_wall.type,
+          thickness_inches:
+            params.internalWallThicknessIn ?? existing.wall_configuration.internal_wall.thickness_inches,
+          thickness_meters: inchesToMeters(
+            params.internalWallThicknessIn ?? existing.wall_configuration.internal_wall.thickness_inches,
+          ),
+        },
+      },
+      material_configuration: {
+        wastage_percentage:
+          typeof params.wastagePct === "number"
+            ? params.wastagePct
+            : existing.material_configuration.wastage_percentage,
+      },
+    };
+    saveStoredWallWastageConfig(updatedCfg);
+  }
+
   const { quantities, constituents } = deriveQuantities(
     current.rooms,
     current.walls,

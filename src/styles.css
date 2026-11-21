@@ -162,101 +162,133 @@
  * Jobright Design Primitives (design.md)
  * ───────────────────────────────────────────────────────────────────────────── */
 
-/* Dual Pill CTA Buttons */
-.btn-pill-black {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  border-radius: 9999px;
-  background-color: #000000;
-  color: #ffffff;
-  font-family: var(--font-sans);
-  font-weight: 600;
-  padding: 0.75rem 2rem;
-  font-size: 0.875rem;
-  line-height: 1;
-  transition: all 0.15s ease;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-}
-.btn-pill-black:hover {
-  background-color: #1f1f1f;
-  transform: translateY(-1px);
-}
+@layer components {
+  /* Dual Pill CTA Buttons */
+  .btn-pill-black {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    background-color: #000000;
+    color: #ffffff;
+    border: 1px solid transparent;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    padding: 0.75rem 2rem;
+    font-size: 0.875rem;
+    line-height: 1;
+    transition: all 0.15s ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  }
+  .btn-pill-black:hover {
+    background-color: #1f1f1f;
+    transform: translateY(-1px);
+  }
+  .dark .btn-pill-black {
+    background-color: #18181b;
+    border-color: #3f3f46;
+  }
+  .dark .btn-pill-black:hover {
+    background-color: #27272a;
+  }
 
-.btn-pill-mint {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  border-radius: 9999px;
-  background-color: #00f0a0;
-  color: #000000;
-  border: 1px solid #000000;
-  font-family: var(--font-sans);
-  font-weight: 600;
-  padding: 0.75rem 2rem;
-  font-size: 0.875rem;
-  line-height: 1;
-  transition: all 0.15s ease;
-  box-shadow: 0 1px 3px rgba(0, 240, 160, 0.25);
-}
-.btn-pill-mint:hover {
-  filter: brightness(1.06);
-  transform: translateY(-1px);
-}
+  .btn-pill-mint {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    background-color: #00f0a0;
+    color: #000000;
+    border: 1px solid #000000;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    padding: 0.75rem 2rem;
+    font-size: 0.875rem;
+    line-height: 1;
+    transition: all 0.15s ease;
+    box-shadow: 0 1px 3px rgba(0, 240, 160, 0.25);
+  }
+  .btn-pill-mint:hover {
+    filter: brightness(1.06);
+    transform: translateY(-1px);
+  }
 
-.btn-pill-white {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  border-radius: 9999px;
-  background-color: #ffffff;
-  color: #000000;
-  border: 1px solid #e5e7eb;
-  font-family: var(--font-sans);
-  font-weight: 600;
-  padding: 0.625rem 1.5rem;
-  font-size: 0.8125rem;
-  line-height: 1;
-  transition: all 0.15s ease;
-}
-.btn-pill-white:hover {
-  background-color: #f2f4f5;
-  border-color: #d1d5db;
-}
+  .btn-pill-white {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    background-color: #ffffff;
+    color: #000000;
+    border: 1px solid #e5e7eb;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    padding: 0.625rem 1.5rem;
+    font-size: 0.8125rem;
+    line-height: 1;
+    transition: all 0.15s ease;
+  }
+  .btn-pill-white:hover {
+    background-color: #f2f4f5;
+    border-color: #d1d5db;
+  }
+  .dark .btn-pill-white {
+    background-color: #18181b;
+    color: #ffffff;
+    border-color: #27272a;
+  }
+  .dark .btn-pill-white:hover {
+    background-color: #27272a;
+    border-color: #3f3f46;
+  }
 
-.btn-pill-sm {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.375rem;
-  border-radius: 9999px;
-  background-color: #000000;
-  color: #ffffff;
-  font-family: var(--font-sans);
-  font-weight: 600;
-  padding: 0.4rem 1.125rem;
-  font-size: 0.75rem;
-  line-height: 1;
-  transition: all 0.15s ease;
-}
-.btn-pill-sm:hover {
-  background-color: #1f1f1f;
-}
+  .btn-pill-sm {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    border-radius: 9999px;
+    background-color: #000000;
+    color: #ffffff;
+    border: 1px solid transparent;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    padding: 0.4rem 1.125rem;
+    font-size: 0.75rem;
+    line-height: 1;
+    transition: all 0.15s ease;
+  }
+  .btn-pill-sm:hover {
+    background-color: #1f1f1f;
+  }
+  .dark .btn-pill-sm {
+    background-color: #18181b;
+    border-color: #3f3f46;
+  }
+  .dark .btn-pill-sm:hover {
+    background-color: #27272a;
+  }
 
-/* Rounded Cards & Asymmetric Feature Cards */
-.feature-card {
-  background-color: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 40px;
-  padding: 2rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-  transition: all 0.2s ease;
-}
-.feature-card-asymmetric {
-  border-radius: 40px 40px 40px 0px;
+  /* Rounded Cards & Asymmetric Feature Cards */
+  .feature-card {
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 40px;
+    padding: 2rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+    transition: all 0.2s ease;
+  }
+  .dark .feature-card {
+    background-color: #09090b;
+    border-color: #27272a;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  }
+  .feature-card-asymmetric {
+    border-radius: 40px 40px 40px 0px;
+  }
 }
 
 /* Marquee for Black Job/Material Ticker */

@@ -208,7 +208,7 @@ function IndexPage() {
                     placeholder="e.g. Modern Residential Villa G+1"
                     value={projectName}
                     onChange={(e) => setProjectName(e.target.value)}
-                    className="w-full rounded-full border border-[#e5e7eb] dark:border-zinc-700 bg-[#f2f4f5] dark:bg-zinc-900 px-5 py-3 text-sm text-black dark:text-white outline-none focus:border-black dark:focus:border-[#00f0a0] focus:bg-white transition-all font-medium"
+                    className="w-full rounded-full border border-[#e5e7eb] dark:border-zinc-700 bg-[#f2f4f5] dark:bg-zinc-900 px-5 py-3 text-sm text-black dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 outline-none focus:border-black dark:focus:border-[#00f0a0] focus:bg-white dark:focus:bg-zinc-900 transition-all font-medium"
                   />
                 </label>
 
@@ -221,7 +221,7 @@ function IndexPage() {
                     placeholder="e.g. Skyline Infrastructure Ltd."
                     value={clientName}
                     onChange={(e) => setClientName(e.target.value)}
-                    className="w-full rounded-full border border-[#e5e7eb] dark:border-zinc-700 bg-[#f2f4f5] dark:bg-zinc-900 px-5 py-3 text-sm text-black dark:text-white outline-none focus:border-black dark:focus:border-[#00f0a0] focus:bg-white transition-all font-medium"
+                    className="w-full rounded-full border border-[#e5e7eb] dark:border-zinc-700 bg-[#f2f4f5] dark:bg-zinc-900 px-5 py-3 text-sm text-black dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 outline-none focus:border-black dark:focus:border-[#00f0a0] focus:bg-white dark:focus:bg-zinc-900 transition-all font-medium"
                   />
                 </label>
               </div>
@@ -236,7 +236,7 @@ function IndexPage() {
                     placeholder="e.g. Plot 42, Green Valley Enclave"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
-                    className="w-full rounded-full border border-[#e5e7eb] dark:border-zinc-700 bg-[#f2f4f5] dark:bg-zinc-900 px-5 py-3 text-sm text-black dark:text-white outline-none focus:border-black dark:focus:border-[#00f0a0] focus:bg-white transition-all font-medium"
+                    className="w-full rounded-full border border-[#e5e7eb] dark:border-zinc-700 bg-[#f2f4f5] dark:bg-zinc-900 px-5 py-3 text-sm text-black dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 outline-none focus:border-black dark:focus:border-[#00f0a0] focus:bg-white dark:focus:bg-zinc-900 transition-all font-medium"
                   />
                 </label>
 
@@ -247,7 +247,7 @@ function IndexPage() {
                   <select
                     value={projectType}
                     onChange={(e) => setProjectType(e.target.value)}
-                    className="w-full rounded-full border border-[#e5e7eb] dark:border-zinc-700 bg-[#f2f4f5] dark:bg-zinc-900 px-5 py-3 text-sm text-black dark:text-white outline-none focus:border-black dark:focus:border-[#00f0a0] focus:bg-white transition-all font-medium cursor-pointer"
+                    className="w-full rounded-full border border-[#e5e7eb] dark:border-zinc-700 bg-[#f2f4f5] dark:bg-zinc-900 px-5 py-3 text-sm text-black dark:text-white outline-none focus:border-black dark:focus:border-[#00f0a0] focus:bg-white dark:focus:bg-zinc-900 transition-all font-medium cursor-pointer"
                   >
                     <option value="Residential Villa (G+1)">Residential Villa (G+1)</option>
                     <option value="Single Story Bungalow">Single Story Bungalow</option>

@@ -100,7 +100,7 @@ export function CalculatorPage({
                     step={f.step ?? 0.01}
                     value={Number.isFinite(values[f.key]) ? values[f.key] : ""}
                     onChange={(e) => setValues((v) => ({ ...v, [f.key]: Number(e.target.value) }))}
-                    className="w-full rounded-full border border-[#e5e7eb] dark:border-zinc-700 bg-[#f2f4f5] dark:bg-zinc-900 px-4 py-2.5 text-sm font-semibold font-mono text-black dark:text-white outline-none focus:border-black dark:focus:border-[#00f0a0] focus:bg-white"
+                    className="w-full rounded-full border border-[#e5e7eb] dark:border-zinc-700 bg-[#f2f4f5] dark:bg-zinc-900 px-4 py-2.5 text-sm font-semibold font-mono text-black dark:text-white outline-none focus:border-black dark:focus:border-[#00f0a0] focus:bg-white dark:focus:bg-zinc-900"
                   />
                 </label>
               ))}

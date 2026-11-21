@@ -98,7 +98,7 @@ function MaterialPricesPage() {
                             className={`w-32 rounded-full border px-4 py-1.5 text-xs font-bold font-mono outline-none transition-all ${
                               isEdited
                                 ? "border-black dark:border-[#00f0a0] bg-[#ecffe0] text-black"
-                                : "border-[#e5e7eb] dark:border-zinc-700 bg-[#f2f4f5] dark:bg-zinc-900 text-black dark:text-white focus:bg-white"
+                                : "border-[#e5e7eb] dark:border-zinc-700 bg-[#f2f4f5] dark:bg-zinc-900 text-black dark:text-white focus:bg-white dark:focus:bg-zinc-900"
                             }`}
                           />
                         </div>

@@ -30,6 +30,7 @@ import { useState, useRef, useEffect, type ChangeEvent, type DragEvent } from "r
 import { toast } from "sonner";
 import { Page } from "@/components/site-chrome";
 import { FloorPlanVisualizer } from "@/components/floor-plan-visualizer";
+import { WallAndWastageConfig } from "@/components/wall-wastage-config";
 import { AIVisionModal } from "@/components/ai-vision-modal";
 import {
   analyzePlanImage,
@@ -37,6 +38,7 @@ import {
   NoVisionKeyError,
   type ExtractionResult,
 } from "@/lib/plan-vision-service";
+import { renderPdfPageToDataUrl } from "@/lib/vision/pdf-handler";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -522,15 +524,16 @@ function ModulePlanDrawings({
 
   const runExtraction = async (dataUrl: string, fileName: string) => {
     setIsAnalyzing(true);
-    toast.loading("Scanning drawing for room labels and dimensions (In-Browser OCR)...", {
+    toast.loading("Analyzing blueprint with Multimodal Vision & Spatial OCR...", {
       id: "vision-extract",
     });
     try {
       const result = await analyzePlanImage(dataUrl, fileName);
       setPendingExtraction(result);
       if (result.rooms.length > 0) {
+        const verifiedCount = result.rooms.filter((r) => r.widthFt > 0 && r.lengthFt > 0).length;
         toast.success(
-          `OCR complete: ${result.rooms.length} spaces extracted with exact dimensions!`,
+          `Analysis complete: ${result.rooms.length} spaces extracted (${verifiedCount} with verified dimensions)!`,
           { id: "vision-extract" },
         );
       } else {
@@ -541,7 +544,7 @@ function ModulePlanDrawings({
       }
     } catch (err) {
       toast.error(
-        "Scanning error: " + (err instanceof Error ? err.message : "OCR analysis failed"),
+        "Scanning error: " + (err instanceof Error ? err.message : "Vision analysis failed"),
         { id: "vision-extract" },
       );
     } finally {
@@ -549,7 +552,7 @@ function ModulePlanDrawings({
     }
   };
 
-  const handleFile = (file: File) => {
+  const handleFile = async (file: File) => {
     if (file.type.startsWith("image/")) {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -567,6 +570,30 @@ function ModulePlanDrawings({
         runExtraction(dataUrl, file.name);
       };
       reader.readAsDataURL(file);
+    } else if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+      toast.loading(`Rendering PDF drawing "${file.name}" at high DPI...`, { id: "pdf-render" });
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const rendered = await renderPdfPageToDataUrl(arrayBuffer, 1, 2.0);
+        paSetFile(
+          {
+            name: file.name,
+            sizeBytes: file.size,
+            previewDataUrl: rendered.dataUrl,
+            uploadedAt: new Date().toISOString(),
+          },
+          projectId,
+        );
+        toast.success(
+          `Blueprint PDF page 1 rendered (${rendered.pageCount} page${rendered.pageCount > 1 ? "s" : ""}). Scanning...`,
+          { id: "pdf-render" },
+        );
+        runExtraction(rendered.dataUrl, file.name);
+      } catch (err: any) {
+        toast.error("Could not render blueprint PDF: " + (err?.message || "Unknown error"), {
+          id: "pdf-render",
+        });
+      }
     } else {
       paSetFile(
         {
@@ -636,12 +663,12 @@ function ModulePlanDrawings({
               <div className="flex flex-wrap items-center gap-2 text-xs font-bold font-display text-black dark:text-white">
                 <Sparkles size={16} className="text-[#00a86b] dark:text-[#00f0a0]" />
                 <span className="text-sm font-bold">
-                  Civil & Architectural OCR Extraction Complete
+                  Civil & Architectural Dimension Extraction
                 </span>
                 <span className="rounded-full bg-black text-[#00f0a0] px-2.5 py-0.5 text-[10px] font-semibold uppercase font-mono">
-                  {pendingExtraction.source === "tesseract-ocr"
-                    ? "In-Browser OCR"
-                    : "Architectural OCR"}
+                  {pendingExtraction.source === "gemini-vlm"
+                    ? "Gemini Multimodal VLM"
+                    : "Spatial 2D OCR"}
                 </span>
                 <span className="rounded-full bg-white dark:bg-zinc-800 border border-black/10 px-2.5 py-0.5 text-[10px] font-mono text-black dark:text-white">
                   Confidence: {pendingExtraction.confidence}
@@ -750,13 +777,15 @@ function ModulePlanDrawings({
                           className="w-full rounded-md border border-[#e5e7eb] dark:border-zinc-700 bg-transparent px-2 py-1 text-xs font-semibold text-black dark:text-white outline-none focus:border-black dark:focus:border-[#00f0a0]"
                         />
                       </td>
-                      <td className="p-2.5 font-mono text-[11px] text-[#86909c]">
+                      <td className="p-2.5 font-mono text-[11px]">
                         {r.rawDimensionText ? (
-                          <span className="rounded-full bg-[#f2f4f5] dark:bg-zinc-800 px-2 py-0.5 text-black dark:text-white font-medium border border-black/5">
-                            {r.rawDimensionText}
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 text-[10px] font-semibold border border-emerald-500/20">
+                            <Check size={10} /> {r.rawDimensionText}
                           </span>
                         ) : (
-                          <span className="italic text-[#86909c]">Visual Span</span>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 px-2 py-0.5 text-[10px] font-medium border border-amber-500/20">
+                            Unmeasured
+                          </span>
                         )}
                       </td>
                       <td className="p-2.5">
@@ -939,6 +968,25 @@ function ModulePlanDrawings({
           )}
         </div>
       </div>
+
+      {/* Wall Type & Material Wastage Configuration */}
+      <WallAndWastageConfig
+        projectId={projectId}
+        externalWallInches={state.keyParams.wallThicknessIn ?? 9}
+        internalWallInches={state.keyParams.internalWallThicknessIn ?? 4.5}
+        wastagePct={state.keyParams.wastagePct ?? 5}
+        onChange={({ externalWallInches, internalWallInches, wastagePct, config }) => {
+          paUpdateKeyParams(
+            {
+              wallThicknessIn: externalWallInches,
+              internalWallThicknessIn: internalWallInches,
+              wastagePct,
+              wallConfig: config.wall_configuration,
+            },
+            projectId,
+          );
+        }}
+      />
     </div>
   );
 }
@@ -1260,6 +1308,25 @@ function ModuleDimensionsTakeoff({
           </div>
         </div>
       </div>
+
+      {/* Wall Type & Material Wastage Configuration */}
+      <WallAndWastageConfig
+        projectId={projectId}
+        externalWallInches={state.keyParams.wallThicknessIn ?? 9}
+        internalWallInches={state.keyParams.internalWallThicknessIn ?? 4.5}
+        wastagePct={state.keyParams.wastagePct ?? 5}
+        onChange={({ externalWallInches, internalWallInches, wastagePct, config }) => {
+          paUpdateKeyParams(
+            {
+              wallThicknessIn: externalWallInches,
+              internalWallThicknessIn: internalWallInches,
+              wastagePct,
+              wallConfig: config.wall_configuration,
+            },
+            projectId,
+          );
+        }}
+      />
     </div>
   );
 }
